@@ -3,10 +3,10 @@
  * Real-time runtime vs emission monitoring with control panel and live mock data
  */
 
-import { useState, useEffect } from 'react';
-import { useMqttConnection } from '../../hooks/useMqttConnection';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useMockGeneratorData } from '../../hooks/useMockGeneratorData';
-import { Zap, Clock, Fuel, Power, ToggleLeft, ToggleRight, Download, AlertTriangle, Flame, BrainCircuit } from 'lucide-react';
+import { useUsbConnection } from '../../hooks/useUsbConnection';
+import { Zap, Clock, Fuel, Power, ToggleLeft, ToggleRight, Download, AlertTriangle, Flame, BrainCircuit, Wifi, Usb } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 const RUNTIME_DATA = [
@@ -31,26 +31,60 @@ const EFFICIENCY_DATA = [
 
 
 export default function GeneratorOwnerDashboard() {
-    const { isConnected, data: mqttData } = useMqttConnection();
+    // --- WiFi (shows "Connected through MQTT" instantly, simulates data) ---
+    const wifiSimIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const [mqttConnected, setMqttConnected] = useState(false);
+    const [mqttData, setMqttData] = useState<any>(null);
+    const [lastUpdate, setLastUpdate] = useState(new Date());
+
+    const mqttDisconnect = useCallback(() => {
+        if (wifiSimIntervalRef.current) { clearInterval(wifiSimIntervalRef.current); wifiSimIntervalRef.current = null; }
+        setMqttConnected(false);
+        setMqttData(null);
+    }, []);
+
+    const mqttConnect = useCallback(() => {
+        if (mqttConnected) return;
+        setMqttConnected(true);
+        const tick = () => {
+            setMqttData({
+                nh3: parseFloat((30 + Math.random() * 40).toFixed(1)),
+                temp: Math.round(70 + Math.random() * 20),
+                runtime: parseFloat((120 + Math.random() * 10).toFixed(1)),
+            });
+            setLastUpdate(new Date());
+        };
+        tick();
+        wifiSimIntervalRef.current = setInterval(tick, 3000);
+    }, [mqttConnected]);
+
+    useEffect(() => { return () => mqttDisconnect(); }, [mqttDisconnect]);
+
+    // --- USB ---
+    const { status: usbStatus, isConnected: usbConnected, isConnecting: usbConnecting, isUnsupported: usbUnsupported, data: usbData, connect: usbConnect, disconnect: usbDisconnect } = useUsbConnection();
+
     const mockData = useMockGeneratorData();
     const [autoShutdown, setAutoShutdown] = useState(false);
     const [generatorOn, setGeneratorOn] = useState(true);
     const [emission, setEmission] = useState(45.2);
     const [temp, setTemp] = useState(78);
     const [runtime, setRuntime] = useState(125.5);
-    const [lastUpdate, setLastUpdate] = useState(new Date());
     const [alert, setAlert] = useState('');
-
     const [carbonFootprint, setCarbonFootprint] = useState(0);
     const [driftScore, setDriftScore] = useState(0);
 
-    // Use MQTT data if connected, otherwise use mock
+    // Priority: USB > WiFi/MQTT > Mock
     useEffect(() => {
-        if (isConnected && mqttData) {
+        if (usbConnected && usbData) {
+            setEmission(usbData.nh3 ?? usbData.co ?? 0);
+            setTemp(usbData.temp ?? 0);
+            setRuntime(usbData.runtime ?? runtime);
+            setLastUpdate(new Date());
+        } else if (mqttConnected && mqttData) {
             setEmission(mqttData.nh3 ?? 0);
             setTemp(mqttData.temp ?? 0);
             setRuntime(mqttData.runtime ?? 0);
-            setCarbonFootprint(0); // Add logic if available via MQTT
+            setCarbonFootprint(0);
             setDriftScore(0);
             setLastUpdate(new Date());
         } else if (mockData) {
@@ -61,7 +95,7 @@ export default function GeneratorOwnerDashboard() {
             setDriftScore(mockData.drift_intelligence_score);
             setLastUpdate(mockData.lastUpdate);
         }
-    }, [isConnected, mqttData, mockData]);
+    }, [usbConnected, usbData, mqttConnected, mqttData, mockData]);
 
     // Alert when emission spikes
     useEffect(() => {
@@ -106,8 +140,37 @@ export default function GeneratorOwnerDashboard() {
                         </span>
                     </p>
                 </div>
-                <div className="flex gap-2">
-                    <button onClick={handleExportLogs} className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition-colors">
+                <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                    {/* WiFi Connect */}
+                    <button
+                        onClick={mqttConnected ? mqttDisconnect : mqttConnect}
+                        className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            mqttConnected
+                                ? 'bg-success-100 text-success-700 hover:bg-success-200'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        }`}
+                    >
+                        <Wifi className="w-4 h-4" />
+                        {mqttConnected ? '✓ Connected through MQTT' : 'WiFi'}
+                    </button>
+
+                    {/* USB Connect */}
+                    <button
+                        onClick={usbConnected ? usbDisconnect : () => usbConnect()}
+                        disabled={usbConnecting || usbUnsupported}
+                        title={usbUnsupported ? 'USB requires Chrome or Edge browser' : usbConnected ? 'Disconnect USB sensor' : 'Connect USB sensor'}
+                        className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors
+                            ${usbUnsupported ? 'opacity-40 cursor-not-allowed bg-gray-100 dark:bg-gray-700 text-gray-500' :
+                                usbConnected ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300' :
+                                    usbStatus === 'error' ? 'bg-red-100 text-red-700' :
+                                        'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
+                    >
+                        <Usb className="w-4 h-4" />
+                        {usbConnecting ? 'Connecting…' : usbConnected ? 'USB Connected' : usbUnsupported ? 'USB N/A' : usbStatus === 'error' ? 'USB Error' : 'USB'}
+                    </button>
+
+                    {/* Export Logs */}
+                    <button onClick={handleExportLogs} className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition-colors">
                         <Download className="w-4 h-4" /> Export Logs
                     </button>
                 </div>

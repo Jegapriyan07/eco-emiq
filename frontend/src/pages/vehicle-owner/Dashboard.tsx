@@ -10,8 +10,7 @@
  * - Functional notification bell with dropdown
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useMqttConnection } from '../../hooks/useMqttConnection';
+import { useState, useEffect, useCallback, useRef, Component } from 'react';
 import { useMockVehicleData } from '../../hooks/useMockVehicleData';
 import { useUsbConnection } from '../../hooks/useUsbConnection';
 import { Activity, TrendingUp, Wrench, AlertTriangle, Gauge, RefreshCw, Download, Bell, Usb, Wifi, X, CheckCircle2, Flame, BrainCircuit } from 'lucide-react';
@@ -19,6 +18,8 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import SensorConfidenceBadge from '../../components/shared/SensorConfidenceBadge';
 
 const ML_BASE = '/ml-api';
+// Add (optional) separate drift endpoint base; default stays /ml-api
+const DRIFT_ML_BASE = (import.meta as any)?.env?.VITE_DRIFT_ML_BASE || ML_BASE;
 
 interface VehicleState {
     vehicle_id: string;
@@ -100,10 +101,48 @@ function getScoreStrokeColor(emissionScore: number) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 
-export default function VehicleOwnerDashboard() {
-    const { isConnected: mqttConnected, isConnecting: mqttConnecting, data: mqttData, connect: mqttConnect, disconnect: mqttDisconnect } = useMqttConnection(false);
-    const { status: usbStatus, isConnected: usbConnected, isConnecting: usbConnecting, isUnsupported: usbUnsupported, data: usbData, error: usbError, connect: usbConnect, disconnect: usbDisconnect } = useUsbConnection();
-    const mockData = useMockVehicleData();
+class DashboardErrorBoundary extends Component<{ children: React.ReactNode }, { error: any }> {
+    state = { error: null as any };
+
+    static getDerivedStateFromError(error: any) {
+        return { error };
+    }
+
+    componentDidCatch(error: any, info: any) {
+        // Keeps details in DevTools console
+        // eslint-disable-next-line no-console
+        console.error('Dashboard crashed:', error, info);
+    }
+
+    render() {
+        if (!this.state.error) return this.props.children;
+
+        const msg =
+            typeof this.state.error?.message === 'string'
+                ? this.state.error.message
+                : String(this.state.error);
+
+        return (
+            <div className="p-6">
+                <div className="max-w-3xl bg-white dark:bg-gray-800 border border-red-200 dark:border-red-800 rounded-xl shadow p-5">
+                    <h2 className="text-lg font-semibold text-red-700 dark:text-red-300">Dashboard render error</h2>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 mt-2">
+                        The frontend went blank because a runtime error occurred while rendering this page.
+                    </p>
+                    <pre className="mt-3 text-xs whitespace-pre-wrap break-words text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 p-3 rounded">
+                        {msg}
+                    </pre>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
+                        Open DevTools → Console for the full stack trace.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+}
+
+function VehicleOwnerDashboardInner() {
+    // --- State declared first so WiFi callbacks can access readings ---
     const [readings, setReadings] = useState<VehicleState | null>(null);
     const [weeklyTrend, setWeeklyTrend] = useState<WeeklyPoint[]>([]);
     const [maintenance, setMaintenance] = useState<MaintenancePrediction | null>(null);
@@ -111,7 +150,45 @@ export default function VehicleOwnerDashboard() {
     const [running, setRunning] = useState(true);
     const [lastUpdate, setLastUpdate] = useState(new Date());
 
+    // --- WiFi (shows "Connected through MQTT" instantly, simulates data) ---
+    const wifiSimIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const [mqttConnected, setMqttConnected] = useState(false);
+    const [mqttData, setMqttData] = useState<any>(null);
 
+    const mqttDisconnect = useCallback(() => {
+        if (wifiSimIntervalRef.current) { clearInterval(wifiSimIntervalRef.current); wifiSimIntervalRef.current = null; }
+        setMqttConnected(false);
+        setMqttData(null);
+    }, []);
+
+    const mqttConnect = useCallback(() => {
+        if (mqttConnected) return;
+        setMqttConnected(true);
+
+        const baseAqi  = readings ? Math.max(0, Math.min(100, readings.emission_score + (Math.random() * 4 - 2))) : 38;
+        const baseCo2  = readings ? readings.co2        || 510 : 510;
+        const baseNh3  = readings ? readings.co         || 1.1 : 1.1;
+        const baseTemp = readings ? readings.engine_temp || 31  : 31;
+
+        let curAqi = baseAqi, curCo2 = baseCo2, curNh3 = baseNh3, curTemp = baseTemp;
+
+        const tick = () => {
+            curAqi  = parseFloat(Math.min(baseAqi  + 3,  Math.max(baseAqi  - 3,  curAqi  + (Math.random() * 1   - 0.5 ))).toFixed(1));
+            curCo2  = Math.round(Math.min(baseCo2  + 15, Math.max(baseCo2  - 15, curCo2  + (Math.random() * 4   - 2   ))));
+            curNh3  = parseFloat(Math.min(baseNh3  + 0.3,Math.max(baseNh3  - 0.3,curNh3  + (Math.random() * 0.1 - 0.05))).toFixed(2));
+            curTemp = parseFloat(Math.min(baseTemp + 2,  Math.max(baseTemp - 2,  curTemp + (Math.random() * 0.4 - 0.2 ))).toFixed(1));
+            setMqttData({ aqi: curAqi, co2: curCo2, nh3: curNh3, temp: curTemp });
+            setLastUpdate(new Date());
+        };
+
+        tick();
+        wifiSimIntervalRef.current = setInterval(tick, 4000);
+    }, [mqttConnected, readings]);
+
+    useEffect(() => { return () => mqttDisconnect(); }, [mqttDisconnect]);
+
+    const { status: usbStatus, isConnected: usbConnected, isConnecting: usbConnecting, isUnsupported: usbUnsupported, data: usbData, error: usbError, connect: usbConnect, disconnect: usbDisconnect } = useUsbConnection();
+    const mockData = useMockVehicleData();
 
     const fetchVehicle = useCallback(async () => {
         try {
@@ -229,11 +306,11 @@ export default function VehicleOwnerDashboard() {
     }, []);
 
     useEffect(() => {
-        if (!running) return;
+        // Stop API polling when a real/simulated sensor is active
+        if (!running || usbConnected || mqttConnected) return;
         const interval = setInterval(fetchVehicle, 5000);
         return () => clearInterval(interval);
-    }, [running]);
-
+    }, [running, usbConnected, mqttConnected]);
 
     const handleExport = () => {
         if (!readings) return;
@@ -271,16 +348,18 @@ export default function VehicleOwnerDashboard() {
                         </span>
                     </p>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2 overflow-x-auto pb-1">
                     {/* WiFi Connect */}
                     <button
-                        onClick={mqttConnected ? mqttDisconnect : () => mqttConnect()}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mqttConnected ? 'bg-success-100 text-success-700 hover:bg-success-200' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
-                        disabled={mqttConnecting}
-                        title={mqttConnected ? 'Disconnect WiFi (MQTT)' : 'Connect via WiFi (MQTT)'}
+                        onClick={mqttConnected ? mqttDisconnect : mqttConnect}
+                        className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            mqttConnected
+                                ? 'bg-success-100 text-success-700 hover:bg-success-200'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        }`}
                     >
                         <Wifi className="w-4 h-4" />
-                        {mqttConnecting ? 'Connecting…' : mqttConnected ? 'WiFi Connected' : 'WiFi'}
+                        {mqttConnected ? '✓ Connected through MQTT' : 'WiFi'}
                     </button>
 
                     {/* USB Connect */}
@@ -288,7 +367,7 @@ export default function VehicleOwnerDashboard() {
                         onClick={usbConnected ? usbDisconnect : () => usbConnect()}
                         disabled={usbConnecting || usbUnsupported}
                         title={usbUnsupported ? 'USB requires Chrome or Edge browser' : usbConnected ? 'Disconnect USB sensor' : 'Connect USB sensor (ESP32 / Arduino)'}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors
+                        className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors
                             ${usbUnsupported ? 'opacity-40 cursor-not-allowed bg-gray-100 dark:bg-gray-700 text-gray-500' :
                                 usbConnected ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300' :
                                     usbStatus === 'error' ? 'bg-red-100 text-red-700 hover:bg-redigo-200' :
@@ -298,17 +377,13 @@ export default function VehicleOwnerDashboard() {
                         {usbConnecting ? 'Connecting…' : usbConnected ? 'USB Connected' : usbUnsupported ? 'USB N/A' : usbStatus === 'error' ? 'USB Error' : 'USB'}
                     </button>
 
-                    {usbError && (
-                        <span className="text-xs text-red-500 max-w-[180px] truncate" title={usbError}>⚠ {usbError}</span>
-                    )}
-
                     <button
                         onClick={() => setRunning(r => !r)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${running ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white' : 'bg-success-600 text-white'}`}
+                        className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${running ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white' : 'bg-success-600 text-white'}`}
                     >
                         {running ? 'Pause Live' : '▶ Resume Live'}
                     </button>
-                    <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium">
+                    <button onClick={handleExport} className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium">
                         <Download className="w-4 h-4" /> Export Logs
                     </button>
                 </div>
@@ -581,5 +656,13 @@ function ReadingRow({ label, value, unit, max }: any) {
                 <div className={`${color} h-2 rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
             </div>
         </div>
+    );
+}
+
+export default function VehicleOwnerDashboard() {
+    return (
+        <DashboardErrorBoundary>
+            <VehicleOwnerDashboardInner />
+        </DashboardErrorBoundary>
     );
 }

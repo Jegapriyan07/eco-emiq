@@ -1,0 +1,19 @@
+/**
+ * EcoTronics Auth Service - Custom Errors
+ * Standardized error classes for consistent API responses
+ */
+
+export class AppError extends Error {
+    public statusCode: number;
+    public errorCode: string;
+    public isOperational: boolean;
+
+    constructor(message: string, statusCode: number, errorCode: string = 'INTERNAL_ERROR') {
+        super(message);
+        this.statusCode = statusCode;
+        this.errorCode = errorCode;
+        this.isOperational = true;
+
+        Error.captureStackTrace(this, this.constructor);
+    }
+}

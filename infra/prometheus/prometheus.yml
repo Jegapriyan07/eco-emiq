@@ -1,0 +1,75 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    project: "ecotronics"
+    environment: "production"
+
+# ─────────────────────────────────────────
+# ALERTING RULES
+# ─────────────────────────────────────────
+rule_files:
+  - "alerts.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []  # Add alertmanager host here
+
+# ─────────────────────────────────────────
+# SCRAPE CONFIGS
+# ─────────────────────────────────────────
+scrape_configs:
+
+  # Prometheus self-monitoring
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Backend API
+  - job_name: "ecotronics-backend"
+    metrics_path: "/metrics"
+    scrape_interval: 10s
+    static_configs:
+      - targets: ["backend:3001"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: "backend"
+
+  # ML Service
+  - job_name: "ecotronics-ml"
+    metrics_path: "/metrics"
+    scrape_interval: 15s
+    static_configs:
+      - targets: ["ml-service:8000"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: "ml-service"
+
+  # Notification Service
+  - job_name: "ecotronics-notification"
+    metrics_path: "/metrics"
+    scrape_interval: 15s
+    static_configs:
+      - targets: ["notification-service:8001"]
+
+  # Heatmap Service
+  - job_name: "ecotronics-heatmap"
+    metrics_path: "/metrics"
+    scrape_interval: 15s
+    static_configs:
+      - targets: ["heatmap-service:8002"]
+
+  # SaaS Service
+  - job_name: "ecotronics-saas"
+    metrics_path: "/metrics"
+    scrape_interval: 15s
+    static_configs:
+      - targets: ["saas-service:8003"]
+
+  # Redis
+  - job_name: "redis"
+    static_configs:
+      - targets: ["redis:6379"]

@@ -1,0 +1,268 @@
+version: "3.9"
+
+services:
+  # ─────────────────────────────────────────
+  # BACKEND API
+  # ─────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ecotronics-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_URL=${DATABASE_URL}
+      - SECRET_KEY=${SECRET_KEY}
+      - REDIS_URL=redis://redis:6379
+      - MQTT_BROKER_HOST=mosquitto
+      - ENVIRONMENT=production
+      - SERVICE_NAME=backend
+    depends_on:
+      - redis
+      - mosquitto
+    networks:
+      - ecotronics-net
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:3001/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(`api.ecotronics.io`)"
+      - "traefik.http.routers.backend.tls=true"
+      - "traefik.http.routers.backend.tls.certresolver=letsencrypt"
+
+  # ─────────────────────────────────────────
+  # ML SERVICE
+  # ─────────────────────────────────────────
+  ml-service:
+    build:
+      context: ./ml-service
+      dockerfile: Dockerfile
+    container_name: ecotronics-ml
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - SERVICE_NAME=ml-service
+      - MODEL_PATH=/app/models
+    volumes:
+      - ml-models:/app/models
+    networks:
+      - ecotronics-net
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+
+  # ─────────────────────────────────────────
+  # NOTIFICATION SERVICE
+  # ─────────────────────────────────────────
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    container_name: ecotronics-notification
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      - ENVIRONMENT=production
+      - SERVICE_NAME=notification-service
+      - REDIS_URL=redis://redis:6379
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - MQTT_BROKER_HOST=mosquitto
+    depends_on:
+      - redis
+      - mosquitto
+    networks:
+      - ecotronics-net
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8001/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────
+  # HEATMAP SERVICE
+  # ─────────────────────────────────────────
+  heatmap-service:
+    build:
+      context: ./heatmap-service
+      dockerfile: Dockerfile
+    container_name: ecotronics-heatmap
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    environment:
+      - ENVIRONMENT=production
+      - SERVICE_NAME=heatmap-service
+    networks:
+      - ecotronics-net
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8002/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────
+  # SAAS SERVICE
+  # ─────────────────────────────────────────
+  saas-service:
+    build:
+      context: ./saas-service
+      dockerfile: Dockerfile
+    container_name: ecotronics-saas
+    restart: unless-stopped
+    ports:
+      - "8003:8003"
+    environment:
+      - ENVIRONMENT=production
+      - SERVICE_NAME=saas-service
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - DATABASE_URL=${DATABASE_URL}
+    networks:
+      - ecotronics-net
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8003/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────
+  # REDIS (Queue + Cache + Rate Limiting)
+  # ─────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: ecotronics-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    networks:
+      - ecotronics-net
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────
+  # MOSQUITTO (MQTT Broker)
+  # ─────────────────────────────────────────
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: ecotronics-mqtt
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-logs:/mosquitto/log
+    networks:
+      - ecotronics-net
+
+  # ─────────────────────────────────────────
+  # PROMETHEUS (Metrics Scraping)
+  # ─────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.49.0
+    container_name: ecotronics-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+    networks:
+      - ecotronics-net
+
+  # ─────────────────────────────────────────
+  # GRAFANA (Dashboards)
+  # ─────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.3.0
+    container_name: ecotronics-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-ecotronics2026}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=https://grafana.ecotronics.io
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
+    networks:
+      - ecotronics-net
+
+  # ─────────────────────────────────────────
+  # TRAEFIK (Reverse Proxy + TLS)
+  # ─────────────────────────────────────────
+  traefik:
+    image: traefik:v3.0
+    container_name: ecotronics-traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080" # Traefik dashboard
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-certs:/letsencrypt
+    networks:
+      - ecotronics-net
+
+# ─────────────────────────────────────────
+# VOLUMES
+# ─────────────────────────────────────────
+volumes:
+  redis-data:
+  mosquitto-data:
+  mosquitto-logs:
+  prometheus-data:
+  grafana-data:
+  ml-models:
+  traefik-certs:
+
+    # ─────────────────────────────────────────
+    # NETWORKS
+    # ─────────────────────────────────────────
+networks:
+  ecotronics-net:
+    driver: bridge

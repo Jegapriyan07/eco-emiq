@@ -1,0 +1,1438 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EcoTronics — Super Admin Dashboard</title>
+    <meta name="description"
+        content="EcoTronics platform super-admin dashboard for managing tenants, subscriptions, and revenue" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet" />
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #060b14;
+            --surface: #0d1526;
+            --surface2: #162035;
+            --surface3: #1e2d47;
+            --border: rgba(255, 255, 255, 0.07);
+            --text: #e2e8f0;
+            --muted: #64748b;
+            --accent: #6366f1;
+            --accent2: #8b5cf6;
+            --green: #22c55e;
+            --yellow: #eab308;
+            --red: #ef4444;
+            --orange: #f97316;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+        }
+
+        /* ── SIDEBAR NAV ── */
+        .nav {
+            width: 220px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            flex-shrink: 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+        }
+
+        .nav-logo {
+            padding: 20px 20px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-logo-inner {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-logo-icon {
+            width: 34px;
+            height: 34px;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+        }
+
+        .nav-logo-text {
+            font-weight: 800;
+            font-size: 15px;
+        }
+
+        .nav-logo-sub {
+            font-size: 10px;
+            color: var(--muted);
+            margin-top: 1px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .nav-section {
+            padding: 16px 12px 8px;
+        }
+
+        .nav-section-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 0 8px;
+            margin-bottom: 6px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--muted);
+            transition: all 0.15s;
+            margin-bottom: 2px;
+        }
+
+        .nav-item:hover {
+            background: var(--surface2);
+            color: var(--text);
+        }
+
+        .nav-item.active {
+            background: rgba(99, 102, 241, 0.15);
+            color: var(--accent);
+        }
+
+        .nav-item-icon {
+            font-size: 15px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .nav-badge {
+            margin-left: auto;
+            background: var(--accent);
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 10px;
+        }
+
+        .nav-footer {
+            margin-top: auto;
+            padding: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        .super-admin-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        /* ── MAIN ── */
+        .main {
+            margin-left: 220px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .topbar {
+            height: 60px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .topbar-title {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.15s;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #4f46e5;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-outline:hover {
+            background: var(--surface2);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--red);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-sm {
+            padding: 5px 12px;
+            font-size: 12px;
+        }
+
+        .content {
+            padding: 28px;
+        }
+
+        /* ── PAGES ── */
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* ── STAT CARDS ── */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+        }
+
+        .stat-card.blue::before {
+            background: linear-gradient(90deg, var(--accent), var(--accent2));
+        }
+
+        .stat-card.green::before {
+            background: linear-gradient(90deg, #22c55e, #16a34a);
+        }
+
+        .stat-card.yellow::before {
+            background: linear-gradient(90deg, #eab308, #ca8a04);
+        }
+
+        .stat-card.red::before {
+            background: linear-gradient(90deg, #ef4444, #dc2626);
+        }
+
+        .stat-icon {
+            font-size: 24px;
+            margin-bottom: 12px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 6px;
+            font-weight: 500;
+        }
+
+        .stat-change {
+            font-size: 11px;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .stat-change.up {
+            color: var(--green);
+        }
+
+        .stat-change.down {
+            color: var(--red);
+        }
+
+        /* ── SECTION HEADER ── */
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .section-sub {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        /* ── TABLE ── */
+        .table-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: var(--surface2);
+            border-bottom: 1px solid var(--border);
+        }
+
+        tbody tr {
+            border-bottom: 1px solid var(--border);
+            transition: background 0.1s;
+        }
+
+        tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        tbody tr:hover {
+            background: var(--surface2);
+        }
+
+        td {
+            padding: 13px 16px;
+            font-size: 13px;
+        }
+
+        /* ── BADGES ── */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .badge-active {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22c55e;
+        }
+
+        .badge-active .badge-dot {
+            background: #22c55e;
+        }
+
+        .badge-suspended {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+        }
+
+        .badge-suspended .badge-dot {
+            background: #ef4444;
+        }
+
+        .badge-trial {
+            background: rgba(234, 179, 8, 0.15);
+            color: #eab308;
+        }
+
+        .badge-trial .badge-dot {
+            background: #eab308;
+        }
+
+        .plan-badge {
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .plan-free {
+            background: rgba(100, 116, 139, 0.2);
+            color: #94a3b8;
+        }
+
+        .plan-starter {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+        }
+
+        .plan-professional {
+            background: rgba(139, 92, 246, 0.2);
+            color: #a78bfa;
+        }
+
+        .plan-enterprise {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+        }
+
+        /* ── REVENUE CARDS ── */
+        .revenue-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .revenue-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 24px;
+        }
+
+        .revenue-label {
+            font-size: 12px;
+            color: var(--muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .revenue-value {
+            font-size: 36px;
+            font-weight: 800;
+            margin-top: 8px;
+        }
+
+        .revenue-sub {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        .plan-breakdown {
+            margin-top: 20px;
+        }
+
+        .plan-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .plan-row-label {
+            font-size: 12px;
+            font-weight: 600;
+            width: 110px;
+        }
+
+        .plan-bar-track {
+            flex: 1;
+            height: 6px;
+            background: var(--surface3);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .plan-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        .plan-row-value {
+            font-size: 12px;
+            color: var(--muted);
+            width: 70px;
+            text-align: right;
+        }
+
+        /* ── ONBOARDING MODAL ── */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            width: 480px;
+            animation: modalIn 0.2s ease;
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95) translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .modal-sub {
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--muted);
+            display: block;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .form-input {
+            width: 100%;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: var(--text);
+            font-size: 13px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+
+        .form-input:focus {
+            border-color: var(--accent);
+        }
+
+        .form-select {
+            width: 100%;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: var(--text);
+            font-size: 13px;
+            font-family: inherit;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 24px;
+        }
+
+        /* ── PLANS PAGE ── */
+        .plans-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .plan-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            position: relative;
+            transition: border-color 0.2s;
+        }
+
+        .plan-card:hover {
+            border-color: rgba(99, 102, 241, 0.4);
+        }
+
+        .plan-card.featured {
+            border-color: rgba(99, 102, 241, 0.5);
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.05));
+        }
+
+        .plan-card-badge {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent);
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 3px 12px;
+            border-radius: 10px;
+            white-space: nowrap;
+        }
+
+        .plan-name {
+            font-size: 18px;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .plan-tagline {
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 16px;
+        }
+
+        .plan-price {
+            font-size: 28px;
+            font-weight: 800;
+        }
+
+        .plan-price-sub {
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 20px;
+        }
+
+        .plan-features {
+            list-style: none;
+        }
+
+        .plan-features li {
+            font-size: 12px;
+            padding: 5px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--muted);
+        }
+
+        .plan-features li::before {
+            content: '✓';
+            color: var(--green);
+            font-weight: 700;
+        }
+
+        .plan-divider {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 16px 0;
+        }
+
+        .plan-limit-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            padding: 3px 0;
+        }
+
+        .plan-limit-key {
+            color: var(--muted);
+        }
+
+        .plan-limit-val {
+            font-weight: 600;
+        }
+
+        /* ── QUOTA BARS ── */
+        .quota-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .quota-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .quota-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .quota-label {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .quota-value {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .quota-bar {
+            height: 6px;
+            background: var(--surface3);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .quota-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s;
+        }
+
+        .quota-fill.low {
+            background: var(--green);
+        }
+
+        .quota-fill.medium {
+            background: var(--yellow);
+        }
+
+        .quota-fill.high {
+            background: var(--red);
+        }
+
+        /* Notification toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 20px;
+            font-size: 13px;
+            font-weight: 500;
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            animation: toastIn 0.25s ease;
+        }
+
+        .toast.show {
+            display: flex;
+        }
+
+        @keyframes toastIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- SIDEBAR -->
+    <nav class="nav">
+        <div class="nav-logo">
+            <div class="nav-logo-inner">
+                <div class="nav-logo-icon">🌿</div>
+                <div>
+                    <div class="nav-logo-text">EcoTronics</div>
+                    <div class="nav-logo-sub">Platform Admin</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-label">Platform</div>
+            <div class="nav-item active" onclick="showPage('overview')">
+                <span class="nav-item-icon">📊</span> Overview
+            </div>
+            <div class="nav-item" onclick="showPage('tenants')">
+                <span class="nav-item-icon">🏢</span> Tenants
+                <span class="nav-badge" id="tenantCount">5</span>
+            </div>
+            <div class="nav-item" onclick="showPage('revenue')">
+                <span class="nav-item-icon">💰</span> Revenue
+            </div>
+            <div class="nav-item" onclick="showPage('plans')">
+                <span class="nav-item-icon">📋</span> Plans
+            </div>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-label">Operations</div>
+            <div class="nav-item" onclick="showPage('devices')">
+                <span class="nav-item-icon">📡</span> All Devices
+            </div>
+            <div class="nav-item" onclick="showPage('quotas')">
+                <span class="nav-item-icon">📈</span> Quotas
+            </div>
+        </div>
+
+        <div class="nav-footer">
+            <div class="super-admin-badge">
+                <span>👑</span> Super Admin
+            </div>
+        </div>
+    </nav>
+
+    <!-- MAIN -->
+    <div class="main">
+        <div class="topbar">
+            <div class="topbar-title" id="pageTitle">Platform Overview</div>
+            <div class="topbar-right">
+                <button class="btn btn-outline btn-sm" onclick="refreshData()">↻ Refresh</button>
+                <button class="btn btn-primary btn-sm" onclick="openOnboardModal()">+ Onboard Customer</button>
+            </div>
+        </div>
+
+        <div class="content">
+
+            <!-- ── OVERVIEW PAGE ── -->
+            <div class="page active" id="page-overview">
+                <div class="stats-grid">
+                    <div class="stat-card blue">
+                        <div class="stat-icon">🏢</div>
+                        <div class="stat-value" id="stat-tenants">5</div>
+                        <div class="stat-label">Total Tenants</div>
+                        <div class="stat-change up">↑ 2 this month</div>
+                    </div>
+                    <div class="stat-card green">
+                        <div class="stat-icon">📡</div>
+                        <div class="stat-value" id="stat-devices">11</div>
+                        <div class="stat-label">Active Devices</div>
+                        <div class="stat-change up">↑ 3 this week</div>
+                    </div>
+                    <div class="stat-card yellow">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-value" id="stat-mrr">₹9,998</div>
+                        <div class="stat-label">Monthly Revenue (MRR)</div>
+                        <div class="stat-change up">↑ 12% vs last month</div>
+                    </div>
+                    <div class="stat-card red">
+                        <div class="stat-icon">⚠️</div>
+                        <div class="stat-value" id="stat-alerts">0</div>
+                        <div class="stat-label">Active Alerts</div>
+                        <div class="stat-change">Platform-wide</div>
+                    </div>
+                </div>
+
+                <!-- Recent Tenants -->
+                <div class="section-header">
+                    <div>
+                        <div class="section-title">Recent Tenants</div>
+                        <div class="section-sub">Latest customer onboardings</div>
+                    </div>
+                    <button class="btn btn-outline btn-sm" onclick="showPage('tenants')">View All →</button>
+                </div>
+
+                <div class="table-card">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Organization</th>
+                                <th>Plan</th>
+                                <th>Status</th>
+                                <th>Devices</th>
+                                <th>Joined</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentTenantsTable">
+                            <tr>
+                                <td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">Loading...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ── TENANTS PAGE ── -->
+            <div class="page" id="page-tenants">
+                <div class="section-header">
+                    <div>
+                        <div class="section-title">All Tenants</div>
+                        <div class="section-sub">Manage customer organizations</div>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="openOnboardModal()">+ Onboard Customer</button>
+                </div>
+
+                <div class="table-card">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Organization</th>
+                                <th>Owner</th>
+                                <th>Plan</th>
+                                <th>Status</th>
+                                <th>Devices</th>
+                                <th>City</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="allTenantsTable">
+                            <tr>
+                                <td colspan="7" style="text-align:center;color:var(--muted);padding:24px;">Loading...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ── REVENUE PAGE ── -->
+            <div class="page" id="page-revenue">
+                <div class="revenue-grid">
+                    <div class="revenue-card">
+                        <div class="revenue-label">Monthly Recurring Revenue</div>
+                        <div class="revenue-value" style="color:var(--green)" id="rev-mrr">₹—</div>
+                        <div class="revenue-sub">From paying tenants</div>
+                        <div class="plan-breakdown" id="rev-breakdown"></div>
+                    </div>
+                    <div class="revenue-card">
+                        <div class="revenue-label">Annual Recurring Revenue</div>
+                        <div class="revenue-value" style="color:var(--accent)" id="rev-arr">₹—</div>
+                        <div class="revenue-sub">Projected annual revenue</div>
+                        <hr class="plan-divider">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px;">
+                            <div>
+                                <div style="font-size:11px;color:var(--muted)">Paying Tenants</div>
+                                <div style="font-size:22px;font-weight:800;margin-top:4px;" id="rev-paying">—</div>
+                            </div>
+                            <div>
+                                <div style="font-size:11px;color:var(--muted)">Free Tenants</div>
+                                <div style="font-size:22px;font-weight:800;margin-top:4px;" id="rev-free">—</div>
+                            </div>
+                        </div>
+                        <div
+                            style="margin-top:16px;padding:12px;background:rgba(234,179,8,0.08);border:1px solid rgba(234,179,8,0.2);border-radius:10px;font-size:12px;color:#eab308;">
+                            💡 Stripe integration pending — configure <code>STRIPE_SECRET_KEY</code> to enable real
+                            billing
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── PLANS PAGE ── -->
+            <div class="page" id="page-plans">
+                <div class="section-header">
+                    <div>
+                        <div class="section-title">Subscription Plans</div>
+                        <div class="section-sub">Current pricing tiers</div>
+                    </div>
+                </div>
+                <div class="plans-grid" id="plansGrid">
+                    <div style="color:var(--muted);font-size:13px;">Loading plans...</div>
+                </div>
+            </div>
+
+            <!-- ── DEVICES PAGE ── -->
+            <div class="page" id="page-devices">
+                <div class="section-header">
+                    <div>
+                        <div class="section-title">All Devices</div>
+                        <div class="section-sub">Platform-wide device registry</div>
+                    </div>
+                </div>
+                <div class="table-card">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Device ID</th>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Tenant</th>
+                                <th>Status</th>
+                                <th>Registered</th>
+                            </tr>
+                        </thead>
+                        <tbody id="devicesTable">
+                            <tr>
+                                <td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">Loading...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ── QUOTAS PAGE ── -->
+            <div class="page" id="page-quotas">
+                <div class="section-header">
+                    <div>
+                        <div class="section-title">Quota Usage</div>
+                        <div class="section-sub">Per-tenant resource consumption</div>
+                    </div>
+                </div>
+                <div id="quotaContent">
+                    <div style="color:var(--muted);font-size:13px;">Loading quota data...</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ONBOARD MODAL -->
+    <div class="modal-overlay" id="onboardModal">
+        <div class="modal">
+            <div class="modal-title">Onboard New Customer</div>
+            <div class="modal-sub">Create a new tenant organization on the platform</div>
+
+            <div class="form-group">
+                <label class="form-label">Organization Name</label>
+                <input class="form-input" id="f-org" placeholder="e.g. Nagpur Industrial Corp" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Owner Email</label>
+                <input class="form-input" id="f-email" type="email" placeholder="admin@company.com" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">City</label>
+                <input class="form-input" id="f-city" placeholder="e.g. Nagpur" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Subscription Plan</label>
+                <select class="form-select" id="f-plan">
+                    <option value="free">Free — ₹0/mo</option>
+                    <option value="starter" selected>Starter — ₹1,999/mo</option>
+                    <option value="professional">Professional — ₹7,999/mo</option>
+                    <option value="enterprise">Enterprise — Custom</option>
+                </select>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="onboardTenant()">Create Tenant</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast" id="toast">
+        <span id="toastIcon">✓</span>
+        <span id="toastMsg">Done</span>
+    </div>
+
+    <script>
+        const API = 'http://localhost:8003';
+        const HEADERS = { 'Content-Type': 'application/json', 'X-User-Role': 'super_admin' };
+
+        let tenantsData = [];
+        let plansData = {};
+        let revenueData = {};
+
+        // ─────────────────────────────────────────────
+        // NAV
+        // ─────────────────────────────────────────────
+        const pageTitles = {
+            overview: 'Platform Overview',
+            tenants: 'Tenant Management',
+            revenue: 'Revenue & Billing',
+            plans: 'Subscription Plans',
+            devices: 'Device Registry',
+            quotas: 'Quota Management',
+        };
+
+        function showPage(name) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(`page-${name}`).classList.add('active');
+            document.getElementById('pageTitle').textContent = pageTitles[name] || name;
+            document.querySelectorAll('.nav-item').forEach(n => {
+                if (n.textContent.toLowerCase().includes(name.split('-')[0])) n.classList.add('active');
+            });
+            if (name === 'revenue') loadRevenue();
+            if (name === 'plans') loadPlans();
+            if (name === 'devices') loadDevices();
+            if (name === 'quotas') loadQuotas();
+        }
+
+        // ─────────────────────────────────────────────
+        // DATA LOADING
+        // ─────────────────────────────────────────────
+        async function loadAll() {
+            await loadTenants();
+            loadRevenue();
+        }
+
+        async function loadTenants() {
+            try {
+                const res = await fetch(`${API}/api/v1/saas/admin/tenants`, { headers: HEADERS });
+                const data = await res.json();
+                tenantsData = data.tenants || [];
+                renderTenantsTable('recentTenantsTable', tenantsData.slice(0, 5), false);
+                renderTenantsTable('allTenantsTable', tenantsData, true);
+                document.getElementById('tenantCount').textContent = tenantsData.length;
+                document.getElementById('stat-tenants').textContent = tenantsData.length;
+
+                const totalDevices = tenantsData.reduce((s, t) => s + (t.device_count || 0), 0);
+                document.getElementById('stat-devices').textContent = totalDevices;
+            } catch (e) {
+                useDemoTenants();
+            }
+        }
+
+        function useDemoTenants() {
+            tenantsData = [
+                { id: 'org-001', org_name: 'Nagpur Municipal Corp', owner_email: 'admin@nmc.gov.in', plan: 'enterprise', status: 'active', city: 'Nagpur', created_at: '2026-01-15', device_count: 4 },
+                { id: 'org-002', org_name: 'Butibori Industrial Estate', owner_email: 'ops@butibori.in', plan: 'professional', status: 'active', city: 'Nagpur', created_at: '2026-01-20', device_count: 3 },
+                { id: 'org-003', org_name: 'Raj Transport Fleet', owner_email: 'fleet@rajtransport.com', plan: 'starter', status: 'active', city: 'Nagpur', created_at: '2026-02-01', device_count: 2 },
+                { id: 'org-004', org_name: 'Green Power Solutions', owner_email: 'admin@greenpower.io', plan: 'starter', status: 'active', city: 'Nagpur', created_at: '2026-02-10', device_count: 1 },
+                { id: 'org-005', org_name: 'Demo Startup', owner_email: 'founder@demo.io', plan: 'free', status: 'active', city: 'Nagpur', created_at: '2026-02-18', device_count: 1 },
+            ];
+            renderTenantsTable('recentTenantsTable', tenantsData.slice(0, 5), false);
+            renderTenantsTable('allTenantsTable', tenantsData, true);
+            document.getElementById('tenantCount').textContent = tenantsData.length;
+            document.getElementById('stat-tenants').textContent = tenantsData.length;
+            document.getElementById('stat-devices').textContent = 11;
+            document.getElementById('stat-mrr').textContent = '₹9,998';
+        }
+
+        function renderTenantsTable(tableId, tenants, full) {
+            const tbody = document.getElementById(tableId);
+            if (!tenants.length) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px;">No tenants found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = tenants.map(t => `
+    <tr>
+      <td>
+        <div style="font-weight:600">${t.org_name}</div>
+        <div style="font-size:11px;color:var(--muted)">${t.id}</div>
+      </td>
+      ${full ? `<td style="font-size:12px;color:var(--muted)">${t.owner_email}</td>` : ''}
+      <td><span class="plan-badge plan-${t.plan}">${t.plan}</span></td>
+      <td>
+        <span class="badge badge-${t.status}">
+          <span class="badge-dot"></span>${t.status}
+        </span>
+      </td>
+      <td>${t.device_count ?? '—'}</td>
+      ${full ? `<td style="font-size:12px;color:var(--muted)">${t.city || '—'}</td>` : ''}
+      <td style="font-size:12px;color:var(--muted)">${(t.created_at || '').slice(0, 10)}</td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="suspendTenant('${t.id}')">Suspend</button>
+      </td>
+    </tr>
+  `).join('');
+        }
+
+        async function loadRevenue() {
+            try {
+                const res = await fetch(`${API}/api/v1/saas/admin/platform/revenue`, { headers: HEADERS });
+                revenueData = await res.json();
+            } catch (e) {
+                revenueData = { mrr: 9998, arr: 119976, paying_tenants: 4, by_plan: { starter: 3998, professional: 7999, enterprise: 0 } };
+            }
+
+            document.getElementById('rev-mrr').textContent = `₹${revenueData.mrr?.toLocaleString('en-IN') || 0}`;
+            document.getElementById('rev-arr').textContent = `₹${revenueData.arr?.toLocaleString('en-IN') || 0}`;
+            document.getElementById('rev-paying').textContent = revenueData.paying_tenants || 0;
+            document.getElementById('rev-free').textContent = (tenantsData.length - (revenueData.paying_tenants || 0));
+            document.getElementById('stat-mrr').textContent = `₹${(revenueData.mrr || 0).toLocaleString('en-IN')}`;
+
+            const maxPlanRev = Math.max(...Object.values(revenueData.by_plan || {}), 1);
+            const planColors = { free: '#64748b', starter: '#3b82f6', professional: '#8b5cf6', enterprise: '#f59e0b' };
+            document.getElementById('rev-breakdown').innerHTML = `
+    <div style="margin-top:16px;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;">Revenue by Plan</div>
+    ${Object.entries(revenueData.by_plan || {}).map(([plan, rev]) => `
+      <div class="plan-row">
+        <div class="plan-row-label" style="color:${planColors[plan] || '#fff'}">${plan}</div>
+        <div class="plan-bar-track">
+          <div class="plan-bar-fill" style="width:${(rev / maxPlanRev * 100).toFixed(1)}%;background:${planColors[plan] || '#6366f1'}"></div>
+        </div>
+        <div class="plan-row-value">₹${rev.toLocaleString('en-IN')}</div>
+      </div>
+    `).join('')}
+  `;
+        }
+
+        async function loadPlans() {
+            try {
+                const res = await fetch(`${API}/api/v1/saas/plans`);
+                const data = await res.json();
+                plansData = data.plans || [];
+            } catch (e) {
+                plansData = [
+                    { name: 'free', display_name: 'Free', price_monthly: 0, tagline: 'Try EcoTronics', color: '#64748b', badge: null, features: ['2 devices', '7-day history', 'Basic dashboard'], limits: { max_devices: 2, max_users: 1 } },
+                    { name: 'starter', display_name: 'Starter', price_monthly: 1999, tagline: 'For small businesses', color: '#3b82f6', badge: 'Popular', features: ['10 devices', '30-day history', 'Email alerts', 'Heatmap'], limits: { max_devices: 10, max_users: 5 } },
+                    { name: 'professional', display_name: 'Professional', price_monthly: 7999, tagline: 'For enterprises', color: '#8b5cf6', badge: 'Best Value', features: ['100 devices', '180-day history', 'SMS alerts', 'ML predictions', 'Priority support'], limits: { max_devices: 100, max_users: 25 } },
+                    { name: 'enterprise', display_name: 'Enterprise', price_monthly: 0, tagline: 'Custom deployment', color: '#f59e0b', badge: 'Contact Sales', features: ['Unlimited devices', '10-year retention', 'Custom integrations', 'SLA guarantee'], limits: { max_devices: '∞', max_users: '∞' } },
+                ];
+            }
+
+            document.getElementById('plansGrid').innerHTML = plansData.map(plan => `
+    <div class="plan-card ${plan.name === 'professional' ? 'featured' : ''}">
+      ${plan.badge ? `<div class="plan-card-badge" style="background:${plan.color}">${plan.badge}</div>` : ''}
+      <div class="plan-name" style="color:${plan.color}">${plan.display_name}</div>
+      <div class="plan-tagline">${plan.tagline}</div>
+      <div class="plan-price">${plan.price_monthly > 0 ? '₹' + plan.price_monthly.toLocaleString('en-IN') : plan.name === 'enterprise' ? 'Custom' : 'Free'}</div>
+      <div class="plan-price-sub">${plan.price_monthly > 0 ? 'per month' : plan.name === 'enterprise' ? 'contact sales' : 'forever'}</div>
+      <hr class="plan-divider">
+      <div class="plan-limit-row"><span class="plan-limit-key">Max Devices</span><span class="plan-limit-val">${plan.limits?.max_devices ?? '∞'}</span></div>
+      <div class="plan-limit-row"><span class="plan-limit-key">Max Users</span><span class="plan-limit-val">${plan.limits?.max_users ?? '∞'}</span></div>
+      <hr class="plan-divider">
+      <ul class="plan-features">
+        ${(plan.features || []).map(f => `<li>${f}</li>`).join('')}
+      </ul>
+    </div>
+  `).join('');
+        }
+
+        function loadDevices() {
+            const allDevices = [
+                { id: 'dev-nmc-001', name: 'Ward 1 Monitor', type: 'air_quality', tenant: 'Nagpur Municipal Corp', status: 'active', registered: '2026-01-15' },
+                { id: 'dev-nmc-002', name: 'Ward 5 Monitor', type: 'air_quality', tenant: 'Nagpur Municipal Corp', status: 'active', registered: '2026-01-15' },
+                { id: 'dev-bie-001', name: 'Factory A Generator', type: 'generator', tenant: 'Butibori Industrial', status: 'active', registered: '2026-01-20' },
+                { id: 'dev-bie-002', name: 'Factory B Generator', type: 'generator', tenant: 'Butibori Industrial', status: 'active', registered: '2026-01-20' },
+                { id: 'dev-rt-001', name: 'Truck MH-31-AB-1234', type: 'vehicle', tenant: 'Raj Transport Fleet', status: 'active', registered: '2026-02-01' },
+                { id: 'dev-rt-002', name: 'Truck MH-31-CD-5678', type: 'vehicle', tenant: 'Raj Transport Fleet', status: 'active', registered: '2026-02-01' },
+                { id: 'dev-gp-001', name: 'DG Set Unit 1', type: 'generator', tenant: 'Green Power Solutions', status: 'active', registered: '2026-02-10' },
+                { id: 'dev-demo-001', name: 'Test Device', type: 'air_quality', tenant: 'Demo Startup', status: 'active', registered: '2026-02-18' },
+            ];
+
+            const typeIcon = { air_quality: '🌬️', generator: '⚡', vehicle: '🚛', industrial: '🏭' };
+
+            document.getElementById('devicesTable').innerHTML = allDevices.map(d => `
+    <tr>
+      <td style="font-family:monospace;font-size:12px;color:var(--accent)">${d.id}</td>
+      <td style="font-weight:600">${typeIcon[d.type] || '📡'} ${d.name}</td>
+      <td><span style="font-size:11px;color:var(--muted)">${d.type}</span></td>
+      <td style="font-size:12px">${d.tenant}</td>
+      <td><span class="badge badge-active"><span class="badge-dot"></span>${d.status}</span></td>
+      <td style="font-size:12px;color:var(--muted)">${d.registered}</td>
+    </tr>
+  `).join('');
+        }
+
+        function loadQuotas() {
+            const quotaItems = [
+                { tenant: 'Nagpur Municipal Corp', plan: 'enterprise', devices: { used: 4, limit: 999999 }, api: { used: 2340, limit: 999999 }, alerts: { used: 12, limit: 999999 } },
+                { tenant: 'Butibori Industrial', plan: 'professional', devices: { used: 3, limit: 100 }, api: { used: 8500, limit: 100000 }, alerts: { used: 45, limit: 5000 } },
+                { tenant: 'Raj Transport Fleet', plan: 'starter', devices: { used: 2, limit: 10 }, api: { used: 3200, limit: 10000 }, alerts: { used: 120, limit: 500 } },
+                { tenant: 'Green Power Solutions', plan: 'starter', devices: { used: 1, limit: 10 }, api: { used: 890, limit: 10000 }, alerts: { used: 23, limit: 500 } },
+                { tenant: 'Demo Startup', plan: 'free', devices: { used: 1, limit: 2 }, api: { used: 450, limit: 1000 }, alerts: { used: 18, limit: 50 } },
+            ];
+
+            document.getElementById('quotaContent').innerHTML = quotaItems.map(q => {
+                const devPct = Math.round(q.devices.used / Math.max(q.devices.limit, 1) * 100);
+                const apiPct = Math.round(q.api.used / Math.max(q.api.limit, 1) * 100);
+                const alertPct = Math.round(q.alerts.used / Math.max(q.alerts.limit, 1) * 100);
+
+                const barClass = pct => pct > 80 ? 'high' : pct > 50 ? 'medium' : 'low';
+
+                return `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div>
+            <div style="font-weight:700;font-size:14px">${q.tenant}</div>
+            <span class="plan-badge plan-${q.plan}" style="margin-top:4px;display:inline-block">${q.plan}</span>
+          </div>
+        </div>
+        <div class="quota-grid">
+          <div class="quota-card">
+            <div class="quota-header">
+              <div class="quota-label">📡 Devices</div>
+              <div class="quota-value">${q.devices.used} / ${q.devices.limit > 9999 ? '∞' : q.devices.limit}</div>
+            </div>
+            <div class="quota-bar"><div class="quota-fill ${barClass(devPct)}" style="width:${Math.min(devPct, 100)}%"></div></div>
+          </div>
+          <div class="quota-card">
+            <div class="quota-header">
+              <div class="quota-label">🔌 API Calls Today</div>
+              <div class="quota-value">${q.api.used.toLocaleString()} / ${q.api.limit > 9999 ? '∞' : q.api.limit.toLocaleString()}</div>
+            </div>
+            <div class="quota-bar"><div class="quota-fill ${barClass(apiPct)}" style="width:${Math.min(apiPct, 100)}%"></div></div>
+          </div>
+          <div class="quota-card">
+            <div class="quota-header">
+              <div class="quota-label">🔔 Alerts This Month</div>
+              <div class="quota-value">${q.alerts.used} / ${q.alerts.limit > 9999 ? '∞' : q.alerts.limit}</div>
+            </div>
+            <div class="quota-bar"><div class="quota-fill ${barClass(alertPct)}" style="width:${Math.min(alertPct, 100)}%"></div></div>
+          </div>
+        </div>
+      </div>
+    `;
+            }).join('');
+        }
+
+        // ─────────────────────────────────────────────
+        // ACTIONS
+        // ─────────────────────────────────────────────
+        function openOnboardModal() {
+            document.getElementById('onboardModal').classList.add('open');
+        }
+        function closeModal() {
+            document.getElementById('onboardModal').classList.remove('open');
+        }
+
+        async function onboardTenant() {
+            const org = document.getElementById('f-org').value.trim();
+            const email = document.getElementById('f-email').value.trim();
+            const city = document.getElementById('f-city').value.trim();
+            const plan = document.getElementById('f-plan').value;
+
+            if (!org || !email) { showToast('Organization name and email required', '⚠️'); return; }
+
+            try {
+                const res = await fetch(`${API}/api/v1/saas/admin/tenants`, {
+                    method: 'POST',
+                    headers: HEADERS,
+                    body: JSON.stringify({ org_name: org, owner_email: email, plan, city }),
+                });
+                if (!res.ok) throw new Error();
+                closeModal();
+                showToast(`✓ ${org} onboarded on ${plan} plan!`, '🎉');
+                await loadTenants();
+            } catch (e) {
+                // Demo mode
+                closeModal();
+                showToast(`✓ ${org} onboarded (demo mode)`, '🎉');
+                tenantsData.unshift({ id: `org-new`, org_name: org, owner_email: email, plan, status: 'active', city, created_at: new Date().toISOString(), device_count: 0 });
+                renderTenantsTable('recentTenantsTable', tenantsData.slice(0, 5), false);
+                renderTenantsTable('allTenantsTable', tenantsData, true);
+                document.getElementById('tenantCount').textContent = tenantsData.length;
+                document.getElementById('stat-tenants').textContent = tenantsData.length;
+            }
+        }
+
+        async function suspendTenant(tenantId) {
+            if (!confirm('Suspend this tenant? They will lose access immediately.')) return;
+            try {
+                await fetch(`${API}/api/v1/saas/admin/tenants/${tenantId}`, {
+                    method: 'DELETE', headers: HEADERS
+                });
+            } catch (e) { }
+            showToast('Tenant suspended', '⚠️');
+            await loadTenants();
+        }
+
+        function refreshData() {
+            loadAll();
+            showToast('Data refreshed', '↻');
+        }
+
+        function showToast(msg, icon = '✓') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').textContent = msg;
+            document.getElementById('toastIcon').textContent = icon;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // ─────────────────────────────────────────────
+        // INIT
+        // ─────────────────────────────────────────────
+        loadAll();
+    </script>
+</body>
+
+</html>

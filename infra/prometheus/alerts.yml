@@ -1,0 +1,81 @@
+groups:
+  - name: ecotronics.ingestion
+    rules:
+      - alert: HighIngestionErrorRate
+        expr: rate(ecotronics_ingest_errors_total[5m]) / rate(ecotronics_ingest_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High ingestion error rate ({{ $value | humanizePercentage }})"
+          description: "Ingestion error rate exceeded 5% for 2 minutes."
+
+      - alert: IngestLatencyHigh
+        expr: ecotronics_ingest_latency_p95_ms > 500
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Ingestion P95 latency high ({{ $value }}ms)"
+
+      - alert: NoIngestionsReceived
+        expr: rate(ecotronics_ingest_total[10m]) == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No device ingestions received in 10 minutes"
+
+  - name: ecotronics.devices
+    rules:
+      - alert: HighDeviceOfflineRate
+        expr: ecotronics_device_offline_rate_pct > 20
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value }}% of devices are offline"
+
+      - alert: CriticalDeviceOfflineRate
+        expr: ecotronics_device_offline_rate_pct > 50
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CRITICAL: {{ $value }}% of devices are offline"
+
+  - name: ecotronics.ml
+    rules:
+      - alert: MLLatencyHigh
+        expr: ecotronics_ml_latency_avg_ms > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "ML service average latency {{ $value }}ms"
+
+      - alert: MLServiceDown
+        expr: up{job="ecotronics-ml"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "ML service is down"
+
+  - name: ecotronics.system
+    rules:
+      - alert: HighMemoryUsage
+        expr: ecotronics_memory_usage_mb > 1024
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Service using {{ $value }}MB memory"
+
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"

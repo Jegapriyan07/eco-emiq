@@ -1,0 +1,91 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User Model
+model User {
+  id             String         @id @default(uuid())
+  email          String         @unique
+  passwordHash   String         @map("password_hash")
+  firstName      String         @map("first_name")
+  lastName       String         @map("last_name")
+  role           String         // vehicle_owner, generator_owner, industry_owner, city_admin
+  phone          String?
+  orgId          String?        @map("org_id")
+  emailVerified  Boolean        @default(false) @map("email_verified")
+  isActive       Boolean        @default(true) @map("is_active")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  // Relationships
+  organization   Organization?  @relation(fields: [orgId], references: [id])
+  refreshTokens  RefreshToken[]
+  devices        Device[]       // Owned devices
+
+  @@map("users")
+}
+
+// Refresh Token Model
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relationships
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+// Organization Model
+model Organization {
+  id              String   @id @default(uuid())
+  name            String
+  type            String   // industry, city, individual
+  plan            String   @default("free") // free, basic, pro, enterprise
+  billingEmail    String?  @map("billing_email")
+  billingAddress  String?  @map("billing_address")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  users           User[]
+  devices         Device[]
+
+  @@map("orgs")
+}
+
+// Device Model (Shared with Device Service)
+model Device {
+  id           String    @id @default(uuid())
+  deviceId     String    @unique @map("device_id")
+  deviceKey    String    @map("device_key")
+  orgId        String?   @map("org_id")
+  ownerId      String    @map("owner_id")
+  name         String
+  type         String    // vehicle, generator, industrial
+  status       String    @default("active") // active, inactive, maintenance, offline
+  lat          Decimal?  @db.Decimal(10, 8)
+  lon          Decimal?  @db.Decimal(11, 8)
+  metadata     Json?
+  lastSeenAt   DateTime? @map("last_seen_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  // Relationships
+  organization Organization? @relation(fields: [orgId], references: [id])
+  owner        User          @relation(fields: [ownerId], references: [id])
+
+  @@map("devices")
+}

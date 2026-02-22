@@ -18,6 +18,7 @@ import {
     AlertTriangle,
     BarChart3,
     Users,
+    Shield,
 } from 'lucide-react';
 
 export default function Sidebar({ isOpen, onToggle }: { isOpen: boolean; onToggle: () => void }) {
@@ -30,17 +31,19 @@ export default function Sidebar({ isOpen, onToggle }: { isOpen: boolean; onToggl
 
     const vehicleOwnerMenu = [
         { icon: Home, label: getLabel('dashboard'), path: '/vehicle-owner' },
-        { icon: Activity, label: 'Timeline', path: '/vehicle-owner/timeline' },
+        { icon: Activity, label: getLabel('timeline'), path: '/vehicle-owner/timeline' },
         { icon: Wrench, label: getLabel('maintenance'), path: '/vehicle-owner/maintenance' },
-        { icon: Lightbulb, label: 'Eco Tips', path: '/vehicle-owner/tips' },
+        { icon: Lightbulb, label: getLabel('eco_tips'), path: '/vehicle-owner/tips' },
+        { icon: Shield, label: getLabel('governance'), path: '/vehicle-owner/governance' },
     ];
 
     const generatorOwnerMenu = [
         { icon: Home, label: getLabel('dashboard'), path: '/generator-owner' },
-        { icon: BarChart3, label: 'Performance', path: '/generator-owner/performance' },
+        { icon: BarChart3, label: getLabel('performance'), path: '/generator-owner/performance' },
         { icon: Wrench, label: getLabel('maintenance'), path: '/generator-owner/maintenance' },
-        { icon: Settings, label: 'Control', path: '/generator-owner/control' },
-        { icon: FileText, label: 'Logs', path: '/generator-owner/logs' },
+        { icon: Settings, label: getLabel('control'), path: '/generator-owner/control' },
+        { icon: FileText, label: getLabel('logs'), path: '/generator-owner/logs' },
+        { icon: Shield, label: getLabel('governance'), path: '/generator-owner/governance' },
     ];
 
     const industryOwnerMenu = [
@@ -49,6 +52,7 @@ export default function Sidebar({ isOpen, onToggle }: { isOpen: boolean; onToggl
         { icon: Wrench, label: getLabel('maintenance'), path: '/industry-owner/maintenance' },
         { icon: AlertTriangle, label: getLabel('anomalies'), path: '/industry-owner/anomalies' },
         { icon: Users, label: getLabel('organization'), path: '/industry-owner/organization' },
+        { icon: Shield, label: getLabel('governance'), path: '/industry-owner/governance' },
     ];
 
     const cityAdminMenu = [
@@ -58,6 +62,7 @@ export default function Sidebar({ isOpen, onToggle }: { isOpen: boolean; onToggl
         { icon: AlertTriangle, label: getLabel('alerts'), path: '/city-admin/alerts' },
         { icon: Settings, label: 'Policy', path: '/city-admin/policy' },
         { icon: Activity, label: getLabel('forecast'), path: '/city-admin/predictions' },
+        { icon: Shield, label: 'Governance', path: '/city-admin/governance' },
     ];
 
     const menuItems = user?.role === 'vehicle_owner' ? vehicleOwnerMenu

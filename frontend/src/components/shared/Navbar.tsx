@@ -67,6 +67,12 @@ export default function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
                     >
                         தமிழ்
                     </button>
+                    <button
+                        onClick={() => setLanguage('hi')}
+                        className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${language === 'hi' ? 'bg-white dark:bg-gray-600 shadow-sm text-primary-600 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+                    >
+                        हिंदी
+                    </button>
                 </div>
 
                 {/* Notifications */}

@@ -659,7 +659,7 @@ export default function CityAdminDashboard() {
                             {deviceConfidences[selectedWard.ward_id] && (
                                 <div className="mt-4 pt-4 border-t border-white/20">
                                     <div className="flex items-center justify-between mb-2">
-                                        <span className="text-xs font-semibold text-white/90">Sensor Confidence</span>
+                                        <span className="text-xs font-semibold text-white/90">{t('sensor_confidence')}</span>
                                         <span className={`text-xs font-bold px-2 py-1 rounded ${deviceConfidences[selectedWard.ward_id].confidence_score >= 0.8 ? 'bg-green-500/30 text-white' :
                                             deviceConfidences[selectedWard.ward_id].confidence_score >= 0.6 ? 'bg-yellow-500/30 text-white' :
                                                 'bg-red-500/30 text-white'

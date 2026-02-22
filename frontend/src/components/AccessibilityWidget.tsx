@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Accessibility, Type, Contrast, EyeOff, LayoutGrid, MousePointer2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const AccessibilityWidget = () => {
+    const { t } = useLanguage();
     const [isOpen, setIsOpen] = useState(false);
     const [settings, setSettings] = useState(() => {
         const saved = localStorage.getItem('accessibility-settings');
@@ -58,12 +60,12 @@ const AccessibilityWidget = () => {
     };
 
     const tools = [
-        { key: 'highContrast', label: 'High Contrast', icon: <Contrast size={20} /> },
-        { key: 'largeText', label: 'Large Text', icon: <Type size={20} /> },
-        { key: 'increasedSpacing', label: 'More Spacing', icon: <LayoutGrid size={20} /> },
-        { key: 'dyslexiaFont', label: 'Dyslexia Friendly', icon: <Type size={20} /> },
-        { key: 'largeCursor', label: 'Large Cursor', icon: <MousePointer2 size={20} /> },
-        { key: 'pauseAnimations', label: 'Pause Animations', icon: <EyeOff size={20} /> },
+        { key: 'highContrast', label: t('high_contrast'), icon: <Contrast size={20} /> },
+        { key: 'largeText', label: t('large_text'), icon: <Type size={20} /> },
+        { key: 'increasedSpacing', label: t('more_spacing'), icon: <LayoutGrid size={20} /> },
+        { key: 'dyslexiaFont', label: t('dyslexia_friendly'), icon: <Type size={20} /> },
+        { key: 'largeCursor', label: t('large_cursor'), icon: <MousePointer2 size={20} /> },
+        { key: 'pauseAnimations', label: t('pause_animations'), icon: <EyeOff size={20} /> },
     ];
 
     return (
@@ -80,7 +82,7 @@ const AccessibilityWidget = () => {
                         <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-100 dark:border-gray-700">
                             <h2 className="text-lg font-bold flex items-center gap-2 text-gray-800 dark:text-white">
                                 <Accessibility size={20} className="text-blue-600 dark:text-blue-400" />
-                                Accessibility Mode
+                                {t('accessibility_mode')}
                             </h2>
                             <button
                                 onClick={() => setIsOpen(false)}
@@ -92,7 +94,7 @@ const AccessibilityWidget = () => {
                         </div>
 
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 px-1">
-                            Adjust the settings below to make the site easier to use.
+                            {t('accessibility_desc')}
                         </p>
 
                         <div className="grid grid-cols-2 gap-2 mb-4">
@@ -118,7 +120,7 @@ const AccessibilityWidget = () => {
                             onClick={resetSettings}
                             className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 rounded-xl text-sm font-semibold transition-colors"
                         >
-                            Reset Settings
+                            {t('reset_settings')}
                         </button>
                     </motion.div>
                 )}

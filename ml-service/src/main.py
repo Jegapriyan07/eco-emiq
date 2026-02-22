@@ -544,6 +544,23 @@ async def get_vehicle_weekly():
     return compute_vehicle_weekly_trend()
 
 
+@app.get("/api/v1/ml/simulate/governance")
+async def get_governance_status(role: str = 'vehicle_owner', emission_value: float = 0.0, threshold_value: float = 80.0):
+    """
+    Returns governance status threshold logic
+    """
+    is_violation = emission_value > threshold_value
+    return {
+        "role": role,
+        "emission_value": emission_value,
+        "threshold_value": threshold_value,
+        "status": "Non-Compliant" if is_violation else "Compliant",
+        "alert_triggered": is_violation,
+        "violation_logged": is_violation,
+        "timestamp": datetime.now().isoformat(),
+        "message": f"Emission {'exceeds' if is_violation else 'within'} safe limits."
+    }
+
 class WhatsAppRequest(BaseModel):
     phone: str
     message: str

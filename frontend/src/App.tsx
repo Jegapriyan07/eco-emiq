@@ -14,17 +14,20 @@ import VehicleOwnerDashboard from './pages/vehicle-owner/Dashboard';
 import TimelinePage from './pages/vehicle-owner/Timeline';
 import VehicleMaintenancePage from './pages/vehicle-owner/Maintenance';
 import EcoTipsPage from './pages/vehicle-owner/EcoTips';
+import VehicleGovernancePage from './pages/vehicle-owner/Governance';
 
 // Generator Owner Pages
 import GeneratorOwnerDashboard from './pages/generator-owner/Dashboard';
 import PerformancePage from './pages/generator-owner/Performance';
 import LogsPage from './pages/generator-owner/Logs';
+import GeneratorGovernancePage from './pages/generator-owner/Governance';
 
 // Industry Owner Pages
 import IndustryOwnerDashboard from './pages/industry-owner/Dashboard';
 import CompliancePage from './pages/industry-owner/Compliance';
 import AnomaliesPage from './pages/industry-owner/Anomalies';
 import OrganizationPage from './pages/industry-owner/Organization';
+import IndustryGovernancePage from './pages/industry-owner/Governance';
 
 // City Admin Pages
 import CityAdminDashboard from './pages/city-admin/Dashboard';
@@ -32,6 +35,7 @@ import WardAnalyticsPage from './pages/city-admin/WardAnalytics';
 import AlertsPage from './pages/city-admin/Alerts';
 import PolicyPage from './pages/city-admin/Policy';
 import PredictionsPage from './pages/city-admin/Predictions';
+import CityAdminGovernancePage from './pages/city-admin/Governance';
 
 // Shared Pages
 import DevicesPage from './pages/shared/DevicesPage';
@@ -76,6 +80,7 @@ function App() {
                                     <Route path="/maintenance" element={<VehicleMaintenancePage />} />
                                     <Route path="/tips" element={<EcoTipsPage />} />
                                     <Route path="/devices" element={<DevicesPage />} />
+                                    <Route path="/governance" element={<VehicleGovernancePage />} />
                                 </Routes>
                             </RoleRoute>
                         }
@@ -92,6 +97,7 @@ function App() {
                                     <Route path="/maintenance" element={<MaintenancePage />} />
                                     <Route path="/control" element={<GeneratorOwnerDashboard />} />
                                     <Route path="/logs" element={<LogsPage />} />
+                                    <Route path="/governance" element={<GeneratorGovernancePage />} />
                                 </Routes>
                             </RoleRoute>
                         }
@@ -108,6 +114,7 @@ function App() {
                                     <Route path="/maintenance" element={<MaintenancePage />} />
                                     <Route path="/anomalies" element={<AnomaliesPage />} />
                                     <Route path="/organization" element={<OrganizationPage />} />
+                                    <Route path="/governance" element={<IndustryGovernancePage />} />
                                 </Routes>
                             </RoleRoute>
                         }
@@ -125,6 +132,7 @@ function App() {
                                     <Route path="/alerts" element={<AlertsPage />} />
                                     <Route path="/policy" element={<PolicyPage />} />
                                     <Route path="/predictions" element={<PredictionsPage />} />
+                                    <Route path="/governance" element={<CityAdminGovernancePage />} />
                                 </Routes>
                             </RoleRoute>
                         }

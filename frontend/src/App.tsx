@@ -8,6 +8,7 @@ import DashboardLayout from './layouts/DashboardLayout';
 // Auth Pages
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import PricingPage from './pages/auth/PricingPage';
 
 // Vehicle Owner Pages
 import VehicleOwnerDashboard from './pages/vehicle-owner/Dashboard';
@@ -59,6 +60,7 @@ function App() {
                 <Route element={<AuthLayout />}>
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/register" element={<RegisterPage />} />
+                    <Route path="/pricing" element={<PricingPage />} />
                 </Route>
 
                 {/* Protected Routes */}

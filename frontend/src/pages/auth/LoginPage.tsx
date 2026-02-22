@@ -184,6 +184,18 @@ export default function LoginPage() {
                     {t('sign_up')}
                 </Link>
             </div>
+
+            {/* Pricing teaser */}
+            <Link
+                to="/pricing"
+                className="block w-full rounded-xl border border-indigo-500/30 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 hover:from-indigo-500/20 hover:to-purple-500/20 transition-all p-3 text-center group"
+            >
+                <p className="text-xs text-indigo-400 font-semibold group-hover:text-indigo-300 flex items-center justify-center gap-1.5">
+                    <span>✨</span>
+                    View Plans & Pricing — Free, Pro &amp; Enterprise
+                    <span className="group-hover:translate-x-0.5 transition-transform">→</span>
+                </p>
+            </Link>
         </div>
     );
 }

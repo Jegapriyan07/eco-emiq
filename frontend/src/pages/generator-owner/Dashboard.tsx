@@ -61,9 +61,10 @@ export default function GeneratorOwnerDashboard() {
     useEffect(() => { return () => mqttDisconnect(); }, [mqttDisconnect]);
 
     // --- USB ---
-    const { status: usbStatus, isConnected: usbConnected, isConnecting: usbConnecting, isUnsupported: usbUnsupported, data: usbData, connect: usbConnect, disconnect: usbDisconnect } = useUsbConnection();
+    const { status: usbStatus, isConnected: usbConnected, isConnecting: usbConnecting, isUnsupported: usbUnsupported, data: usbData, error: usbError, connect: usbConnect, disconnect: usbDisconnect } = useUsbConnection();
 
-    const mockData = useMockGeneratorData();
+    // Pause simulation ticks whenever a real sensor (USB or MQTT) is active
+    const mockData = useMockGeneratorData(usbConnected || mqttConnected);
     const [autoShutdown, setAutoShutdown] = useState(false);
     const [generatorOn, setGeneratorOn] = useState(true);
     const [emission, setEmission] = useState(45.2);
@@ -74,12 +75,19 @@ export default function GeneratorOwnerDashboard() {
     const [driftScore, setDriftScore] = useState(0);
 
     // Priority: USB > WiFi/MQTT > Mock
+    // Guard: only apply USB values when at least one field is non-zero
+    // (protects against all-zero frames before the first ESP32 packet with
+    //  correctly mapped field names arrives)
     useEffect(() => {
         if (usbConnected && usbData) {
-            setEmission(usbData.nh3 ?? usbData.co ?? 0);
-            setTemp(usbData.temp ?? 0);
-            setRuntime(usbData.runtime ?? runtime);
-            setLastUpdate(new Date());
+            const hasRealData = (usbData.nh3 ?? usbData.co ?? 0) > 0
+                || (usbData.temp ?? 0) > 0;
+            if (hasRealData) {
+                setEmission(usbData.nh3 ?? usbData.co ?? 0);
+                setTemp(usbData.temp ?? 0);
+                setRuntime(usbData.runtime ?? runtime);
+                setLastUpdate(new Date());
+            }
         } else if (mqttConnected && mqttData) {
             setEmission(mqttData.nh3 ?? 0);
             setTemp(mqttData.temp ?? 0);
@@ -96,6 +104,7 @@ export default function GeneratorOwnerDashboard() {
             setLastUpdate(mockData.lastUpdate);
         }
     }, [usbConnected, usbData, mqttConnected, mqttData, mockData]);
+
 
     // Alert when emission spikes
     useEffect(() => {
@@ -144,11 +153,10 @@ export default function GeneratorOwnerDashboard() {
                     {/* WiFi Connect */}
                     <button
                         onClick={mqttConnected ? mqttDisconnect : mqttConnect}
-                        className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            mqttConnected
-                                ? 'bg-success-100 text-success-700 hover:bg-success-200'
-                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                        }`}
+                        className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mqttConnected
+                            ? 'bg-success-100 text-success-700 hover:bg-success-200'
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                            }`}
                     >
                         <Wifi className="w-4 h-4" />
                         {mqttConnected ? '✓ Connected through MQTT' : 'WiFi'}
@@ -158,15 +166,20 @@ export default function GeneratorOwnerDashboard() {
                     <button
                         onClick={usbConnected ? usbDisconnect : () => usbConnect()}
                         disabled={usbConnecting || usbUnsupported}
-                        title={usbUnsupported ? 'USB requires Chrome or Edge browser' : usbConnected ? 'Disconnect USB sensor' : 'Connect USB sensor'}
+                        title={
+                            usbUnsupported ? 'USB requires Chrome or Edge browser' :
+                                usbConnected ? 'Click to disconnect USB sensor' :
+                                    usbStatus === 'error' ? (usbError ?? 'USB connection failed — click to retry') :
+                                        'Connect USB sensor (ESP32 / Arduino)'
+                        }
                         className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors
                             ${usbUnsupported ? 'opacity-40 cursor-not-allowed bg-gray-100 dark:bg-gray-700 text-gray-500' :
                                 usbConnected ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300' :
-                                    usbStatus === 'error' ? 'bg-red-100 text-red-700' :
+                                    usbStatus === 'error' ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300' :
                                         'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
                     >
                         <Usb className="w-4 h-4" />
-                        {usbConnecting ? 'Connecting…' : usbConnected ? 'USB Connected' : usbUnsupported ? 'USB N/A' : usbStatus === 'error' ? 'USB Error' : 'USB'}
+                        {usbConnecting ? 'Connecting…' : usbConnected ? 'USB Connected' : usbUnsupported ? 'USB N/A' : usbStatus === 'error' ? '↺ Retry USB' : 'USB'}
                     </button>
 
                     {/* Export Logs */}

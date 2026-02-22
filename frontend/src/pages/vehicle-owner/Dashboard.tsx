@@ -18,8 +18,6 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import SensorConfidenceBadge from '../../components/shared/SensorConfidenceBadge';
 
 const ML_BASE = '/ml-api';
-// Add (optional) separate drift endpoint base; default stays /ml-api
-const DRIFT_ML_BASE = (import.meta as any)?.env?.VITE_DRIFT_ML_BASE || ML_BASE;
 
 interface VehicleState {
     vehicle_id: string;
@@ -165,18 +163,18 @@ function VehicleOwnerDashboardInner() {
         if (mqttConnected) return;
         setMqttConnected(true);
 
-        const baseAqi  = readings ? Math.max(0, Math.min(100, readings.emission_score + (Math.random() * 4 - 2))) : 38;
-        const baseCo2  = readings ? readings.co2        || 510 : 510;
-        const baseNh3  = readings ? readings.co         || 1.1 : 1.1;
-        const baseTemp = readings ? readings.engine_temp || 31  : 31;
+        const baseAqi = readings ? Math.max(0, Math.min(100, readings.emission_score + (Math.random() * 4 - 2))) : 38;
+        const baseCo2 = readings ? readings.co2 || 510 : 510;
+        const baseNh3 = readings ? readings.co || 1.1 : 1.1;
+        const baseTemp = readings ? readings.engine_temp || 31 : 31;
 
         let curAqi = baseAqi, curCo2 = baseCo2, curNh3 = baseNh3, curTemp = baseTemp;
 
         const tick = () => {
-            curAqi  = parseFloat(Math.min(baseAqi  + 3,  Math.max(baseAqi  - 3,  curAqi  + (Math.random() * 1   - 0.5 ))).toFixed(1));
-            curCo2  = Math.round(Math.min(baseCo2  + 15, Math.max(baseCo2  - 15, curCo2  + (Math.random() * 4   - 2   ))));
-            curNh3  = parseFloat(Math.min(baseNh3  + 0.3,Math.max(baseNh3  - 0.3,curNh3  + (Math.random() * 0.1 - 0.05))).toFixed(2));
-            curTemp = parseFloat(Math.min(baseTemp + 2,  Math.max(baseTemp - 2,  curTemp + (Math.random() * 0.4 - 0.2 ))).toFixed(1));
+            curAqi = parseFloat(Math.min(baseAqi + 3, Math.max(baseAqi - 3, curAqi + (Math.random() * 1 - 0.5))).toFixed(1));
+            curCo2 = Math.round(Math.min(baseCo2 + 15, Math.max(baseCo2 - 15, curCo2 + (Math.random() * 4 - 2))));
+            curNh3 = parseFloat(Math.min(baseNh3 + 0.3, Math.max(baseNh3 - 0.3, curNh3 + (Math.random() * 0.1 - 0.05))).toFixed(2));
+            curTemp = parseFloat(Math.min(baseTemp + 2, Math.max(baseTemp - 2, curTemp + (Math.random() * 0.4 - 0.2))).toFixed(1));
             setMqttData({ aqi: curAqi, co2: curCo2, nh3: curNh3, temp: curTemp });
             setLastUpdate(new Date());
         };
@@ -188,7 +186,8 @@ function VehicleOwnerDashboardInner() {
     useEffect(() => { return () => mqttDisconnect(); }, [mqttDisconnect]);
 
     const { status: usbStatus, isConnected: usbConnected, isConnecting: usbConnecting, isUnsupported: usbUnsupported, data: usbData, error: usbError, connect: usbConnect, disconnect: usbDisconnect } = useUsbConnection();
-    const mockData = useMockVehicleData();
+    // Pause simulation polling whenever a real sensor (USB or MQTT) is active
+    const mockData = useMockVehicleData(usbConnected || mqttConnected);
 
     const fetchVehicle = useCallback(async () => {
         try {
@@ -261,24 +260,34 @@ function VehicleOwnerDashboardInner() {
     }, [readings, fetchSensorConfidence]);
 
     // Priority: USB > MQTT > Mock/API
+    // Guard: only use USB data once at least one real sensor value is present.
+    // This prevents all-zero readings (from field-name mismatch or first packet delay)
+    // from replacing simulation data while the device warms up.
     useEffect(() => {
         if (usbConnected && usbData) {
-            setReadings({
-                vehicle_id: 'usb-sensor',
-                timestamp: new Date().toISOString(),
-                emission_score: usbData.aqi ?? 0,
-                co: usbData.co ?? 0,
-                co2: usbData.co2 ?? 0,
-                nox: usbData.nox ?? 0,
-                pm25: usbData.pm25 ?? 0,
-                carbon_footprint: 0,
-                drift_intelligence_score: 0,
-                engine_temp: usbData.temp ?? 0,
-                ambient_temp: 0,
-                traffic_load: 0,
-                label: 'Live (USB)',
-            });
-            setLastUpdate(new Date());
+            const hasRealData = (usbData.aqi ?? 0) > 0
+                || (usbData.co ?? 0) > 0
+                || (usbData.pm25 ?? 0) > 0
+                || (usbData.temp ?? 0) > 0;
+
+            if (hasRealData) {
+                setReadings({
+                    vehicle_id: 'usb-sensor',
+                    timestamp: new Date().toISOString(),
+                    emission_score: usbData.aqi ?? 0,
+                    co: usbData.co ?? 0,
+                    co2: usbData.co2 ?? 0,
+                    nox: usbData.nox ?? 0,
+                    pm25: usbData.pm25 ?? 0,
+                    carbon_footprint: 0,
+                    drift_intelligence_score: 0,
+                    engine_temp: usbData.temp ?? 0,
+                    ambient_temp: 0,
+                    traffic_load: 0,
+                    label: 'Live (USB)',
+                });
+                setLastUpdate(new Date());
+            }
         } else if (mqttConnected && mqttData) {
             setReadings({
                 vehicle_id: 'esp32-mqtt',
@@ -299,6 +308,7 @@ function VehicleOwnerDashboardInner() {
             setReadings(mockData);
         }
     }, [usbConnected, usbData, mqttConnected, mqttData, mockData]);
+
 
     useEffect(() => {
         fetchWeekly();
@@ -352,11 +362,10 @@ function VehicleOwnerDashboardInner() {
                     {/* WiFi Connect */}
                     <button
                         onClick={mqttConnected ? mqttDisconnect : mqttConnect}
-                        className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            mqttConnected
-                                ? 'bg-success-100 text-success-700 hover:bg-success-200'
-                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                        }`}
+                        className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mqttConnected
+                            ? 'bg-success-100 text-success-700 hover:bg-success-200'
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                            }`}
                     >
                         <Wifi className="w-4 h-4" />
                         {mqttConnected ? '✓ Connected through MQTT' : 'WiFi'}
@@ -366,15 +375,20 @@ function VehicleOwnerDashboardInner() {
                     <button
                         onClick={usbConnected ? usbDisconnect : () => usbConnect()}
                         disabled={usbConnecting || usbUnsupported}
-                        title={usbUnsupported ? 'USB requires Chrome or Edge browser' : usbConnected ? 'Disconnect USB sensor' : 'Connect USB sensor (ESP32 / Arduino)'}
+                        title={
+                            usbUnsupported ? 'USB requires Chrome or Edge browser' :
+                                usbConnected ? 'Click to disconnect USB sensor' :
+                                    usbStatus === 'error' ? (usbError ?? 'USB connection failed — click to retry') :
+                                        'Connect USB sensor (ESP32 / Arduino)'
+                        }
                         className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors
                             ${usbUnsupported ? 'opacity-40 cursor-not-allowed bg-gray-100 dark:bg-gray-700 text-gray-500' :
                                 usbConnected ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300' :
-                                    usbStatus === 'error' ? 'bg-red-100 text-red-700 hover:bg-redigo-200' :
+                                    usbStatus === 'error' ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300' :
                                         'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
                     >
                         <Usb className="w-4 h-4" />
-                        {usbConnecting ? 'Connecting…' : usbConnected ? 'USB Connected' : usbUnsupported ? 'USB N/A' : usbStatus === 'error' ? 'USB Error' : 'USB'}
+                        {usbConnecting ? 'Connecting…' : usbConnected ? 'USB Connected' : usbUnsupported ? 'USB N/A' : usbStatus === 'error' ? '↺ Retry USB' : 'USB'}
                     </button>
 
                     <button

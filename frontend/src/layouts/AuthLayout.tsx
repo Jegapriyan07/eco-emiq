@@ -1,16 +1,18 @@
 /**
  * Auth Layout
- * Layout for login and registration pages
+ * Layout for login, registration, and pricing pages
  */
 
-import { Outlet, Navigate } from 'react-router-dom';
+import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 
 export default function AuthLayout() {
     const { isAuthenticated, user } = useAuthStore();
+    const location = useLocation();
+    const isPricing = location.pathname === '/pricing';
 
-    // Redirect to dashboard if already authenticated
-    if (isAuthenticated) {
+    // Redirect to dashboard if already authenticated (unless viewing pricing)
+    if (isAuthenticated && !isPricing) {
         const dashboardPath =
             user?.role === 'vehicle_owner'
                 ? '/vehicle-owner'
@@ -21,6 +23,15 @@ export default function AuthLayout() {
                         : '/city-admin';
 
         return <Navigate to={dashboardPath} replace />;
+    }
+
+    // Full-width layout for pricing page
+    if (isPricing) {
+        return (
+            <div className="min-h-screen bg-slate-950">
+                <Outlet />
+            </div>
+        );
     }
 
     return (
@@ -35,7 +46,7 @@ export default function AuthLayout() {
                 </div>
 
                 {/* Content */}
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 relative pt-14">
                     <Outlet />
                 </div>
 

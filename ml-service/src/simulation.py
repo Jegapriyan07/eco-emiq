@@ -134,6 +134,8 @@ def compute_ward_state(ward_id: str, now: datetime = None) -> dict:
     profile = WARD_PROFILES.get(ward_id)
     if not profile:
         raise ValueError(f"Unknown ward: {ward_id}")
+    assert profile is not None  # narrows type for Pylance — we raise above if None
+
 
     hour = now.hour + now.minute / 60.0
 

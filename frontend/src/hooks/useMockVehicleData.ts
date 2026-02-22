@@ -16,16 +16,32 @@ export interface VehicleState {
     label: string;
 }
 
-export function useMockVehicleData() {
+/**
+ * Polls the simulation engine for vehicle data.
+ * @param paused - When true (e.g. USB or MQTT is connected), the polling
+ *                 interval is suspended so real sensor data is never
+ *                 overwritten by simulated readings.
+ */
+export function useMockVehicleData(paused = false) {
     const [data, setData] = useState<VehicleState | null>(null);
+
     useEffect(() => {
+        // Don't start/resume polling while a real sensor is active
+        if (paused) return;
+
         const fetchData = async () => {
-            const res = await fetch('/ml-api/simulate/vehicle');
-            if (res.ok) setData(await res.json());
+            try {
+                const res = await fetch('/ml-api/simulate/vehicle');
+                if (res.ok) setData(await res.json());
+            } catch {
+                // network unavailable – ignore silently
+            }
         };
+
         fetchData();
         const interval = setInterval(fetchData, 5000);
         return () => clearInterval(interval);
-    }, []);
+    }, [paused]); // re-evaluate whenever paused changes
+
     return data;
 }

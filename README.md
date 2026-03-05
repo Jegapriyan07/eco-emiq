@@ -83,20 +83,17 @@ ecotronics/
 │   │   ├── processing/       # Local emission calculation engine
 │   │   ├── storage/          # Local buffer management
 │   │   └── sync/             # Cloud sync when online
-│   ├── tests/
-│   └── Dockerfile
+│   └── tests/
 │
 ├── backend/                  # Cloud microservices
 │   ├── auth-service/
 │   │   ├── src/
-│   │   ├── tests/
-│   │   └── Dockerfile
+│   │   └── tests/
 │   ├── device-service/
 │   ├── data-ingestion-service/
 │   ├── analytics-service/
 │   ├── alert-service/
-│   ├── reporting-service/
-│   └── docker-compose.yml
+│   └── reporting-service/
 │
 ├── frontend/                 # React web dashboard
 │   ├── src/
@@ -110,7 +107,7 @@ ecotronics/
 │   │   ├── services/
 │   │   └── utils/
 │   ├── public/
-│   └── Dockerfile
+│   └── public/
 │
 ├── shared/                   # Shared libraries and types
 │   ├── types/
@@ -136,7 +133,6 @@ ecotronics/
 
 ### Prerequisites
 - Node.js 18+
-- Docker & Docker Compose
 - PostgreSQL 14+
 - Redis 7+
 
@@ -150,11 +146,12 @@ cd ecotronics
 # Install dependencies
 npm install
 
-# Start backend services
+# Start backend
 cd backend
-docker-compose up -d
+npm install
+npm run dev
 
-# Start frontend
+# Start frontend (in a new terminal)
 cd ../frontend
 npm install
 npm run dev

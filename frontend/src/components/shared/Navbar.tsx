@@ -7,14 +7,16 @@ import { useAuthStore } from '../../store/authStore';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Menu, LogOut, User } from 'lucide-react';
 import { NotificationBell } from '../../pages/vehicle-owner/Dashboard';
+import { useNavigate } from 'react-router-dom';
 
 export default function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
     const { user, logout } = useAuthStore();
     const { language, setLanguage, t } = useLanguage();
+    const navigate = useNavigate();
 
     const handleLogout = () => {
         logout();
-        window.location.href = '/login';
+        navigate('/login', { replace: true });
     };
 
     const getRoleBadge = (role: string) => {

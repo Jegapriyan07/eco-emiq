@@ -3,6 +3,10 @@
         {
             "source": "/ml-api/:path*",
             "destination": "https://ml-service-gold.vercel.app/api/v1/ml/:path*"
+        },
+        {
+            "source": "/((?!ml-api).*)",
+            "destination": "/index.html"
         }
     ]
 }

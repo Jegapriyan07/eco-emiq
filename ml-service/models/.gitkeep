@@ -1,0 +1,7 @@
+# Placeholder for saved models
+# This directory will contain:
+# - maintenance_rf.pkl
+# - anomaly_if.pkl
+# - forecast_prophet.pkl
+
+# Models will be generated after running training scripts

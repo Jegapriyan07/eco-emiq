@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EcoTronics — Organization Dashboard</title>
+    <meta name="description" content="EcoTronics organization dashboard — manage devices, view usage, and billing" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet" />
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #060b14;
+            --surface: #0d1526;
+            --surface2: #162035;
+            --surface3: #1e2d47;
+            --border: rgba(255, 255, 255, 0.07);
+            --text: #e2e8f0;
+            --muted: #64748b;
+            --accent: #6366f1;
+            --green: #22c55e;
+            --yellow: #eab308;
+            --red: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+        }
+
+        /* NAV */
+        .nav {
+            width: 220px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+        }
+
+        .nav-logo {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-logo-inner {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-logo-icon {
+            width: 34px;
+            height: 34px;
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+        }
+
+        .nav-logo-text {
+            font-weight: 800;
+            font-size: 15px;
+        }
+
+        .nav-org {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        .nav-section {
+            padding: 16px 12px 8px;
+        }
+
+        .nav-section-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 0 8px;
+            margin-bottom: 6px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--muted);
+            transition: all 0.15s;
+            margin-bottom: 2px;
+        }
+
+        .nav-item:hover {
+            background: var(--surface2);
+            color: var(--text);
+        }
+
+        .nav-item.active {
+            background: rgba(99, 102, 241, 0.15);
+            color: var(--accent);
+        }
+
+        .nav-item-icon {
+            font-size: 15px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .nav-footer {
+            margin-top: auto;
+            padding: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        .plan-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        /* MAIN */
+        .main {
+            margin-left: 220px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .topbar {
+            height: 60px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .topbar-title {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.15s;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #4f46e5;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-outline:hover {
+            background: var(--surface2);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--red);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-sm {
+            padding: 5px 12px;
+            font-size: 12px;
+        }
+
+        .content {
+            padding: 28px;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* STATS */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px;
+        }
+
+        .stat-icon {
+            font-size: 22px;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 800;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        /* QUOTA */
+        .quota-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .quota-title {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .quota-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        .quota-item {}
+
+        .quota-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .quota-label {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .quota-value {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .quota-bar {
+            height: 8px;
+            background: var(--surface3);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .quota-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.6s ease;
+        }
+
+        .quota-fill.low {
+            background: linear-gradient(90deg, #22c55e, #16a34a);
+        }
+
+        .quota-fill.medium {
+            background: linear-gradient(90deg, #eab308, #ca8a04);
+        }
+
+        .quota-fill.high {
+            background: linear-gradient(90deg, #ef4444, #dc2626);
+        }
+
+        /* DEVICES */
+        .table-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: var(--surface2);
+            border-bottom: 1px solid var(--border);
+        }
+
+        tbody tr {
+            border-bottom: 1px solid var(--border);
+            transition: background 0.1s;
+        }
+
+        tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        tbody tr:hover {
+            background: var(--surface2);
+        }
+
+        td {
+            padding: 13px 16px;
+            font-size: 13px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .badge-active {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22c55e;
+        }
+
+        .badge-active .badge-dot {
+            background: #22c55e;
+        }
+
+        /* BILLING */
+        .billing-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .billing-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 24px;
+        }
+
+        .billing-label {
+            font-size: 11px;
+            color: var(--muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .billing-value {
+            font-size: 28px;
+            font-weight: 800;
+            margin-top: 8px;
+        }
+
+        .billing-sub {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        .invoice-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .invoice-row:last-child {
+            border-bottom: none;
+        }
+
+        .invoice-date {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .invoice-amount {
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .invoice-status {
+            font-size: 11px;
+            color: var(--green);
+            font-weight: 600;
+        }
+
+        /* PLAN UPGRADE */
+        .upgrade-banner {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 14px;
+            padding: 20px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+
+        .upgrade-text {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .upgrade-sub {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        /* MODAL */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            width: 480px;
+            animation: modalIn 0.2s ease;
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .modal-sub {
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--muted);
+            display: block;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .form-input {
+            width: 100%;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: var(--text);
+            font-size: 13px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+
+        .form-input:focus {
+            border-color: var(--accent);
+        }
+
+        .form-select {
+            width: 100%;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: var(--text);
+            font-size: 13px;
+            font-family: inherit;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 24px;
+        }
+
+        /* TOAST */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 20px;
+            font-size: 13px;
+            font-weight: 500;
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        .toast.show {
+            display: flex;
+        }
+
+        /* FEATURE FLAGS */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .feature-item {
+            background: var(--surface2);
+            border-radius: 10px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .feature-item.enabled {
+            color: var(--text);
+        }
+
+        .feature-item.disabled {
+            color: var(--muted);
+            opacity: 0.6;
+        }
+
+        .feature-icon {
+            font-size: 16px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- NAV -->
+    <nav class="nav">
+        <div class="nav-logo">
+            <div class="nav-logo-inner">
+                <div class="nav-logo-icon">🌿</div>
+                <div>
+                    <div class="nav-logo-text">EcoTronics</div>
+                    <div class="nav-org" id="orgName">Loading org...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-label">Dashboard</div>
+            <div class="nav-item active" onclick="showPage('overview')"><span class="nav-item-icon">📊</span> Overview
+            </div>
+            <div class="nav-item" onclick="showPage('devices')"><span class="nav-item-icon">📡</span> Devices</div>
+            <div class="nav-item" onclick="showPage('usage')"><span class="nav-item-icon">📈</span> Usage & Quotas</div>
+            <div class="nav-item" onclick="showPage('billing')"><span class="nav-item-icon">💳</span> Billing</div>
+        </div>
+
+        <div class="nav-footer">
+            <div id="planPill" class="plan-pill" style="background:rgba(59,130,246,0.15);color:#60a5fa;">
+                📋 Starter Plan
+            </div>
+            <div style="margin-top:10px;">
+                <button class="btn btn-primary" style="width:100%;font-size:12px" onclick="showPage('billing')">⬆
+                    Upgrade Plan</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- MAIN -->
+    <div class="main">
+        <div class="topbar">
+            <div class="topbar-title" id="pageTitle">Organization Overview</div>
+            <div class="topbar-right">
+                <button class="btn btn-outline btn-sm" onclick="loadAll()">↻ Refresh</button>
+                <button class="btn btn-primary btn-sm" onclick="openAddDevice()">+ Add Device</button>
+            </div>
+        </div>
+
+        <div class="content">
+
+            <!-- OVERVIEW -->
+            <div class="page active" id="page-overview">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">📡</div>
+                        <div class="stat-value" id="ov-devices" style="color:var(--accent)">—</div>
+                        <div class="stat-label">Devices Registered</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🔔</div>
+                        <div class="stat-value" id="ov-alerts" style="color:var(--yellow)">0</div>
+                        <div class="stat-label">Active Alerts</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🔌</div>
+                        <div class="stat-value" id="ov-api" style="color:var(--green)">—</div>
+                        <div class="stat-label">API Calls Today</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📅</div>
+                        <div class="stat-value" id="ov-retention" style="color:var(--muted)">—</div>
+                        <div class="stat-label">Data Retention (days)</div>
+                    </div>
+                </div>
+
+                <!-- Upgrade Banner -->
+                <div class="upgrade-banner" id="upgradeBanner" style="display:none">
+                    <div>
+                        <div class="upgrade-text">🚀 Unlock more with Professional</div>
+                        <div class="upgrade-sub">Get 100 devices, SMS alerts, ML predictions & priority support</div>
+                    </div>
+                    <button class="btn btn-primary" onclick="showPage('billing')">Upgrade Now →</button>
+                </div>
+
+                <!-- Feature Flags -->
+                <div
+                    style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:24px;">
+                    <div style="font-size:14px;font-weight:700;margin-bottom:4px;">Plan Features</div>
+                    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">What's included in your current
+                        plan</div>
+                    <div class="feature-grid" id="featureGrid">
+                        <div style="color:var(--muted);font-size:13px;">Loading...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DEVICES -->
+            <div class="page" id="page-devices">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                    <div>
+                        <div style="font-size:15px;font-weight:700;">Device Registry</div>
+                        <div style="font-size:12px;color:var(--muted);margin-top:2px;" id="deviceQuotaLabel">— / —
+                            devices used</div>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="openAddDevice()">+ Register Device</button>
+                </div>
+
+                <div class="table-card">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Device ID</th>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Location</th>
+                                <th>Status</th>
+                                <th>API Key</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="devicesTable">
+                            <tr>
+                                <td colspan="7" style="text-align:center;color:var(--muted);padding:24px;">Loading...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- USAGE -->
+            <div class="page" id="page-usage">
+                <div style="font-size:15px;font-weight:700;margin-bottom:4px;">Usage & Quotas</div>
+                <div style="font-size:12px;color:var(--muted);margin-bottom:20px;">Current resource consumption vs plan
+                    limits</div>
+
+                <div class="quota-section">
+                    <div class="quota-title">Resource Usage</div>
+                    <div class="quota-grid" id="quotaGrid">
+                        <div style="color:var(--muted);font-size:13px;">Loading...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BILLING -->
+            <div class="page" id="page-billing">
+                <div style="font-size:15px;font-weight:700;margin-bottom:20px;">Billing & Subscription</div>
+
+                <div class="billing-grid">
+                    <div class="billing-card">
+                        <div class="billing-label">Current Plan</div>
+                        <div class="billing-value" id="bill-plan" style="color:var(--accent)">—</div>
+                        <div class="billing-sub" id="bill-price">—</div>
+                        <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
+                        <button class="btn btn-primary" style="width:100%" onclick="openUpgradeModal()">⬆ Upgrade
+                            Plan</button>
+                        <button class="btn btn-outline" style="width:100%;margin-top:8px"
+                            onclick="openBillingPortal()">Manage Billing →</button>
+                    </div>
+                    <div class="billing-card">
+                        <div class="billing-label">Recent Invoices</div>
+                        <div id="invoiceList" style="margin-top:12px;">
+                            <div style="color:var(--muted);font-size:13px;">Loading invoices...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Plan comparison -->
+                <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;">
+                    <div style="font-size:14px;font-weight:700;margin-bottom:16px;">Available Plans</div>
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;" id="billingPlansGrid">
+                        <div style="color:var(--muted);font-size:13px;">Loading...</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ADD DEVICE MODAL -->
+    <div class="modal-overlay" id="addDeviceModal">
+        <div class="modal">
+            <div class="modal-title">Register New Device</div>
+            <div class="modal-sub">Add a device to your organization</div>
+            <div class="form-group">
+                <label class="form-label">Device Name</label>
+                <input class="form-input" id="d-name" placeholder="e.g. Factory Generator Unit 3" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Device Type</label>
+                <select class="form-select" id="d-type">
+                    <option value="generator">Generator</option>
+                    <option value="air_quality">Air Quality Monitor</option>
+                    <option value="vehicle">Vehicle</option>
+                    <option value="industrial">Industrial Equipment</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Location (optional)</label>
+                <input class="form-input" id="d-location" placeholder="e.g. Factory A, Plot 12" />
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('addDeviceModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="addDevice()">Register Device</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- UPGRADE MODAL -->
+    <div class="modal-overlay" id="upgradeModal">
+        <div class="modal">
+            <div class="modal-title">Upgrade Your Plan</div>
+            <div class="modal-sub">Choose a plan that fits your needs</div>
+            <div id="upgradePlanOptions" style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+                <div style="color:var(--muted);font-size:13px;">Loading plans...</div>
+            </div>
+            <div
+                style="padding:12px;background:rgba(234,179,8,0.08);border:1px solid rgba(234,179,8,0.2);border-radius:10px;font-size:12px;color:#eab308;margin-bottom:20px;">
+                💡 Stripe integration pending — upgrade will redirect to demo checkout
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('upgradeModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">
+        <span id="toastIcon">✓</span>
+        <span id="toastMsg">Done</span>
+    </div>
+
+    <script>
+        const API = 'http://localhost:8003';
+        const TENANT_ID = 'org-demo-starter'; // In production: read from auth token
+        const HEADERS = { 'Content-Type': 'application/json', 'X-Tenant-Id': TENANT_ID, 'X-User-Role': 'org_admin' };
+
+        let orgData = null;
+        let devicesData = [];
+
+        const planColors = { free: '#94a3b8', starter: '#60a5fa', professional: '#a78bfa', enterprise: '#fbbf24' };
+        const planPrices = { free: 'Free forever', starter: '₹1,999 / month', professional: '₹7,999 / month', enterprise: 'Custom pricing' };
+
+        const pageTitles = { overview: 'Organization Overview', devices: 'Device Registry', usage: 'Usage & Quotas', billing: 'Billing & Subscription' };
+
+        function showPage(name) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(`page-${name}`).classList.add('active');
+            document.getElementById('pageTitle').textContent = pageTitles[name] || name;
+            document.querySelectorAll('.nav-item').forEach(n => {
+                if (n.textContent.toLowerCase().includes(name.split('-')[0])) n.classList.add('active');
+            });
+            if (name === 'billing') loadBilling();
+            if (name === 'usage') renderQuotas();
+            if (name === 'devices') loadDevices();
+        }
+
+        async function loadAll() {
+            await loadOrgProfile();
+            loadDevices();
+        }
+
+        async function loadOrgProfile() {
+            try {
+                const res = await fetch(`${API}/api/v1/saas/org/profile`, { headers: HEADERS });
+                orgData = await res.json();
+            } catch (e) {
+                orgData = {
+                    tenant: { org_name: 'Raj Transport Fleet', plan: 'starter', status: 'active', city: 'Nagpur' },
+                    plan: { display_name: 'Starter', price_monthly: 1999, limits: { max_devices: 10, max_users: 5, data_retention_days: 30, api_calls_per_day: 10000, alerts_per_month: 500, heatmap_access: true, email_notifications: true, sms_notifications: false, mqtt_relay: true, export_csv: true, priority_support: false } },
+                    usage: { devices: { used: 2, limit: 10, pct: 20 }, api_calls_today: { used: 3200, limit: 10000, pct: 32 }, alerts_this_month: { used: 120, limit: 500, pct: 24 }, ml_predictions_today: { used: 450, limit: 1000, pct: 45 }, features: { heatmap: true, email_alerts: true, sms_alerts: false, mqtt_relay: true, csv_export: true, priority_support: false } }
+                };
+            }
+
+            const { tenant, plan, usage } = orgData;
+            document.getElementById('orgName').textContent = tenant.org_name;
+            document.getElementById('ov-devices').textContent = usage.devices.used;
+            document.getElementById('ov-api').textContent = usage.api_calls_today.used.toLocaleString();
+            document.getElementById('ov-retention').textContent = plan.limits?.data_retention_days || '—';
+
+            const color = planColors[tenant.plan] || '#6366f1';
+            document.getElementById('planPill').style.background = color + '20';
+            document.getElementById('planPill').style.color = color;
+            document.getElementById('planPill').innerHTML = `📋 ${plan.display_name} Plan`;
+
+            // Show upgrade banner for non-enterprise
+            if (tenant.plan !== 'enterprise' && tenant.plan !== 'professional') {
+                document.getElementById('upgradeBanner').style.display = 'flex';
+            }
+
+            // Feature flags
+            const features = usage.features || {};
+            const featureList = [
+                { key: 'heatmap', label: 'Heatmap Access', icon: '🗺️' },
+                { key: 'email_alerts', label: 'Email Alerts', icon: '📧' },
+                { key: 'sms_alerts', label: 'SMS Alerts', icon: '📱' },
+                { key: 'mqtt_relay', label: 'MQTT Relay', icon: '📡' },
+                { key: 'csv_export', label: 'CSV Export', icon: '📊' },
+                { key: 'priority_support', label: 'Priority Support', icon: '🎯' },
+            ];
+            document.getElementById('featureGrid').innerHTML = featureList.map(f => `
+    <div class="feature-item ${features[f.key] ? 'enabled' : 'disabled'}">
+      <span class="feature-icon">${f.icon}</span>
+      <span>${f.label}</span>
+      <span style="margin-left:auto">${features[f.key] ? '✓' : '✗'}</span>
+    </div>
+  `).join('');
+        }
+
+        async function loadDevices() {
+            try {
+                const res = await fetch(`${API}/api/v1/saas/org/devices`, { headers: HEADERS });
+                const data = await res.json();
+                devicesData = data.devices || [];
+                document.getElementById('deviceQuotaLabel').textContent = `${data.count} / ${data.quota} devices used (${data.quota_used_pct}%)`;
+            } catch (e) {
+                devicesData = [
+                    { id: 'dev-rt-001', name: 'Truck MH-31-AB-1234', type: 'vehicle', status: 'active', registered_at: '2026-02-01', api_key: 'dk-abc123xyz456def789ghi012', location: { lat: 21.12, lon: 79.09 } },
+                    { id: 'dev-rt-002', name: 'Truck MH-31-CD-5678', type: 'vehicle', status: 'active', registered_at: '2026-02-01', api_key: 'dk-xyz789abc123def456ghi789', location: { lat: 21.13, lon: 79.10 } },
+                ];
+                document.getElementById('deviceQuotaLabel').textContent = `${devicesData.length} / 10 devices used`;
+            }
+
+            const typeIcon = { air_quality: '🌬️', generator: '⚡', vehicle: '🚛', industrial: '🏭' };
+            document.getElementById('devicesTable').innerHTML = devicesData.map(d => `
+    <tr>
+      <td style="font-family:monospace;font-size:12px;color:var(--accent)">${d.id}</td>
+      <td style="font-weight:600">${typeIcon[d.type] || '📡'} ${d.name}</td>
+      <td style="font-size:12px;color:var(--muted)">${d.type}</td>
+      <td style="font-size:12px;color:var(--muted)">${d.location?.lat ? `${d.location.lat}, ${d.location.lon}` : '—'}</td>
+      <td><span class="badge badge-active"><span class="badge-dot"></span>${d.status}</span></td>
+      <td style="font-family:monospace;font-size:11px;color:var(--muted)">${(d.api_key || '').slice(0, 16)}...</td>
+      <td><button class="btn btn-danger btn-sm" onclick="removeDevice('${d.id}')">Remove</button></td>
+    </tr>
+  `).join('');
+        }
+
+        function renderQuotas() {
+            if (!orgData) return;
+            const { usage } = orgData;
+            const items = [
+                { label: '📡 Devices', key: 'devices' },
+                { label: '🔌 API Calls Today', key: 'api_calls_today' },
+                { label: '🔔 Alerts This Month', key: 'alerts_this_month' },
+                { label: '🤖 ML Predictions Today', key: 'ml_predictions_today' },
+            ];
+            document.getElementById('quotaGrid').innerHTML = items.map(item => {
+                const d = usage[item.key] || { used: 0, limit: 0, pct: 0 };
+                const cls = d.pct > 80 ? 'high' : d.pct > 50 ? 'medium' : 'low';
+                return `
+      <div class="quota-item">
+        <div class="quota-header">
+          <div class="quota-label">${item.label}</div>
+          <div class="quota-value">${d.used.toLocaleString()} / ${d.limit > 9999 ? '∞' : d.limit.toLocaleString()}</div>
+        </div>
+        <div class="quota-bar"><div class="quota-fill ${cls}" style="width:${Math.min(d.pct, 100)}%"></div></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">${d.pct}% used</div>
+      </div>
+    `;
+            }).join('');
+        }
+
+        async function loadBilling() {
+            if (!orgData) return;
+            const { tenant, plan } = orgData;
+            document.getElementById('bill-plan').textContent = plan.display_name || tenant.plan;
+            document.getElementById('bill-plan').style.color = planColors[tenant.plan] || '#6366f1';
+            document.getElementById('bill-price').textContent = planPrices[tenant.plan] || '—';
+
+            // Demo invoices
+            const price = plan.price_monthly || 0;
+            const invoices = price > 0 ? [
+                { date: '2026-02-01', amount: price, status: 'paid' },
+                { date: '2026-01-01', amount: price, status: 'paid' },
+                { date: '2025-12-01', amount: price, status: 'paid' },
+            ] : [];
+
+            document.getElementById('invoiceList').innerHTML = invoices.length
+                ? invoices.map(inv => `
+        <div class="invoice-row">
+          <div>
+            <div class="invoice-date">${inv.date}</div>
+            <div class="invoice-status">✓ Paid</div>
+          </div>
+          <div class="invoice-amount">₹${inv.amount.toLocaleString('en-IN')}</div>
+        </div>
+      `).join('')
+                : '<div style="color:var(--muted);font-size:13px;padding:8px 0">No invoices — you\'re on the free plan</div>';
+
+            // Plan comparison
+            const plans = [
+                { name: 'free', display_name: 'Free', price_monthly: 0, color: '#94a3b8', features: ['2 devices', '7-day history'] },
+                { name: 'starter', display_name: 'Starter', price_monthly: 1999, color: '#60a5fa', features: ['10 devices', '30-day history', 'Email alerts'] },
+                { name: 'professional', display_name: 'Professional', price_monthly: 7999, color: '#a78bfa', features: ['100 devices', '180-day history', 'SMS + Email', 'ML predictions'] },
+                { name: 'enterprise', display_name: 'Enterprise', price_monthly: 0, color: '#fbbf24', features: ['Unlimited devices', 'Custom integrations', 'SLA'] },
+            ];
+
+            document.getElementById('billingPlansGrid').innerHTML = plans.map(p => `
+    <div style="background:var(--surface2);border:1px solid ${p.name === tenant.plan ? p.color + '60' : 'var(--border)'};border-radius:12px;padding:16px;${p.name === tenant.plan ? 'box-shadow:0 0 0 1px ' + p.color + '30' : ''}">
+      ${p.name === tenant.plan ? `<div style="font-size:10px;color:${p.color};font-weight:700;margin-bottom:6px;text-transform:uppercase">✓ Current Plan</div>` : ''}
+      <div style="font-size:15px;font-weight:800;color:${p.color}">${p.display_name}</div>
+      <div style="font-size:18px;font-weight:700;margin:8px 0">${p.price_monthly > 0 ? '₹' + p.price_monthly.toLocaleString('en-IN') : p.name === 'enterprise' ? 'Custom' : 'Free'}</div>
+      <ul style="list-style:none;margin-top:8px">
+        ${p.features.map(f => `<li style="font-size:11px;color:var(--muted);padding:3px 0">✓ ${f}</li>`).join('')}
+      </ul>
+      ${p.name !== tenant.plan ? `<button class="btn btn-outline btn-sm" style="width:100%;margin-top:12px" onclick="upgradeTo('${p.name}')">Select →</button>` : ''}
+    </div>
+  `).join('');
+        }
+
+        // ─────────────────────────────────────────────
+        // ACTIONS
+        // ─────────────────────────────────────────────
+        function openAddDevice() { document.getElementById('addDeviceModal').classList.add('open'); }
+        function openUpgradeModal() { document.getElementById('upgradeModal').classList.add('open'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+        async function addDevice() {
+            const name = document.getElementById('d-name').value.trim();
+            const type = document.getElementById('d-type').value;
+            const location = document.getElementById('d-location').value.trim();
+            if (!name) { showToast('Device name required', '⚠️'); return; }
+
+            try {
+                const res = await fetch(`${API}/api/v1/saas/org/devices`, {
+                    method: 'POST',
+                    headers: HEADERS,
+                    body: JSON.stringify({ device_name: name, device_type: type, location: { description: location } }),
+                });
+                if (!res.ok) {
+                    const err = await res.json();
+                    showToast(err.detail || 'Failed to add device', '⚠️');
+                    return;
+                }
+            } catch (e) {
+                // Demo mode
+            }
+
+            closeModal('addDeviceModal');
+            showToast(`✓ ${name} registered!`, '📡');
+            loadDevices();
+        }
+
+        async function removeDevice(deviceId) {
+            if (!confirm('Remove this device? This cannot be undone.')) return;
+            try {
+                await fetch(`${API}/api/v1/saas/org/devices/${deviceId}`, { method: 'DELETE', headers: HEADERS });
+            } catch (e) { }
+            showToast('Device removed', '🗑️');
+            loadDevices();
+        }
+
+        function upgradeTo(plan) {
+            closeModal('upgradeModal');
+            showToast(`Redirecting to ${plan} checkout... (Stripe pending)`, '💳');
+        }
+
+        function openBillingPortal() {
+            showToast('Stripe Billing Portal — configure STRIPE_SECRET_KEY to enable', '💡');
+        }
+
+        function showToast(msg, icon = '✓') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').textContent = msg;
+            document.getElementById('toastIcon').textContent = icon;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3500);
+        }
+
+        loadAll();
+    </script>
+</body>
+
+</html>

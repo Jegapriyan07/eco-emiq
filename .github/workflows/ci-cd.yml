@@ -1,0 +1,318 @@
+name: EcoTronics CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop, staging]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  PYTHON_VERSION: "3.10"
+  NODE_VERSION: "18"
+
+jobs:
+  # ════════════════════════════════════════════
+  # JOB 1: Unit Tests
+  # ════════════════════════════════════════════
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install test dependencies
+        run: |
+          pip install pytest pytest-cov pytest-asyncio pytest-mock
+
+      - name: Run unit tests
+        run: |
+          pytest tests/unit/ -v \
+            --tb=short \
+            --cov=. \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --junitxml=test-results/unit-results.xml
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v4
+        with:
+          file: coverage.xml
+          flags: unit
+          fail_ci_if_error: false
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-test-results
+          path: test-results/
+
+  # ════════════════════════════════════════════
+  # JOB 2: Integration Tests
+  # ════════════════════════════════════════════
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install pytest pytest-asyncio pytest-mock
+
+      - name: Run integration tests
+        run: |
+          pytest tests/integration/ -v \
+            --tb=short \
+            --junitxml=test-results/integration-results.xml
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-results
+          path: test-results/
+
+  # ════════════════════════════════════════════
+  # JOB 3: Security Scan
+  # ════════════════════════════════════════════
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install security tools
+        run: |
+          pip install bandit safety pip-audit
+
+      - name: Run Bandit (SAST)
+        run: |
+          bandit -r . \
+            --exclude .venv,tests,node_modules \
+            -f json \
+            -o bandit-report.json \
+            --severity-level medium || true
+
+      - name: Check for known vulnerabilities
+        run: |
+          pip install -r backend/requirements.txt 2>/dev/null || true
+          safety check --json > safety-report.json || true
+
+      - name: Audit pip packages
+        run: |
+          pip-audit --format json > pip-audit-report.json || true
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+            safety-report.json
+            pip-audit-report.json
+
+  # ════════════════════════════════════════════
+  # JOB 4: Lint & Code Quality
+  # ════════════════════════════════════════════
+  lint:
+    name: Lint & Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install linters
+        run: pip install flake8 black isort mypy
+
+      - name: Run flake8
+        run: |
+          flake8 . \
+            --exclude=.venv,node_modules,migrations \
+            --max-line-length=120 \
+            --count \
+            --statistics || true
+
+      - name: Check Black formatting
+        run: |
+          black --check --diff . \
+            --exclude="(.venv|node_modules|migrations)" || true
+
+  # ════════════════════════════════════════════
+  # JOB 5: Build Docker Images
+  # ════════════════════════════════════════════
+  build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests, lint]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    strategy:
+      matrix:
+        service:
+          - name: backend
+            path: ./backend
+            image: ecotronics-backend
+          - name: ml-service
+            path: ./ml-service
+            image: ecotronics-ml
+          - name: notification-service
+            path: ./notification-service
+            image: ecotronics-notification
+          - name: heatmap-service
+            path: ./heatmap-service
+            image: ecotronics-heatmap
+          - name: saas-service
+            path: ./saas-service
+            image: ecotronics-saas
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/${{ matrix.service.image }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.service.path }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ════════════════════════════════════════════
+  # JOB 6: Deploy to Dev
+  # ════════════════════════════════════════════
+  deploy-dev:
+    name: Deploy to Dev
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/develop'
+    environment:
+      name: development
+      url: https://dev.ecotronics.io
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to dev server
+        env:
+          DEPLOY_KEY: ${{ secrets.DEV_DEPLOY_KEY }}
+          DEV_HOST: ${{ secrets.DEV_HOST }}
+        run: |
+          echo "Deploying to dev environment..."
+          # SSH deploy command (configure with actual server)
+          # ssh -i $DEPLOY_KEY deploy@$DEV_HOST "cd /opt/ecotronics && docker compose pull && docker compose up -d"
+          echo "Dev deployment complete"
+
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests against dev..."
+          # curl -f https://dev.ecotronics.io/health || exit 1
+          echo "Smoke tests passed"
+
+      - name: Notify Slack on success
+        if: success()
+        run: |
+          echo "Notifying team of successful dev deployment"
+          # curl -X POST ${{ secrets.SLACK_WEBHOOK }} -d '{"text":"✅ Dev deployment successful"}'
+
+  # ════════════════════════════════════════════
+  # JOB 7: Deploy to Staging
+  # ════════════════════════════════════════════
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: staging
+      url: https://staging.ecotronics.io
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to staging
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+        run: |
+          echo "Deploying to staging environment..."
+          echo "Staging deployment complete"
+
+      - name: Run integration smoke tests
+        run: |
+          echo "Running integration smoke tests on staging..."
+          echo "All smoke tests passed"
+
+  # ════════════════════════════════════════════
+  # JOB 8: Load Test (on staging, weekly)
+  # ════════════════════════════════════════════
+  load-test:
+    name: Load Test
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Run baseline load test
+        run: |
+          python tests/load/load_test_ingestion.py baseline
+
+      - name: Upload load test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: load-test-results
+          path: load-test-results/

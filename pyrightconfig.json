@@ -1,0 +1,10 @@
+{
+    "typeCheckingMode": "off",
+    "pythonPath": "C:\\Users\\hires\\miniconda3\\python.exe",
+    "exclude": [
+        "**/node_modules",
+        "**/__pycache__",
+        "**/.*",
+        "frontend"
+    ]
+}

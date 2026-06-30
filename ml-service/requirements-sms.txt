@@ -1,0 +1,22 @@
+# EcoTronics ML Service - SMS Integration Dependencies
+# Install with: pip install -r requirements-sms.txt
+
+# Core FastAPI dependencies (already in main requirements.txt)
+fastapi>=0.104.1
+uvicorn[standard]>=0.24.0
+pydantic>=2.0.0
+
+# SMS Provider Libraries (choose based on your SMS_PROVIDER setting)
+
+# MSG91 - No extra dependencies needed (uses requests which is pre-installed)
+# Just set: SMS_PROVIDER=msg91 in .env
+
+# Twilio - For global SMS delivery
+twilio>=8.10.0
+
+# AWS SNS - For enterprise SMS delivery
+boto3>=1.28.0
+botocore>=1.31.0
+
+# Optional: For SMS logging and monitoring
+python-json-logger>=2.0.7

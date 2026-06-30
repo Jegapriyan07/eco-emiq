@@ -1,0 +1,24 @@
+{
+    "name": "@ecotronics/shared",
+    "version": "0.1.0",
+    "description": "Shared types and utilities for EcoTronics platform",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc --watch",
+        "clean": "rm -rf dist",
+        "test": "jest"
+    },
+    "keywords": [
+        "ecotronics",
+        "shared",
+        "types"
+    ],
+    "author": "EcoTronics Team",
+    "license": "MIT",
+    "devDependencies": {
+        "@types/node": "^18.15.0",
+        "typescript": "^5.0.2"
+    }
+}

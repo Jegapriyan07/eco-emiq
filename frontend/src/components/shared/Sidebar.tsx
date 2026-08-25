@@ -20,7 +20,7 @@ import {
     Users,
 } from 'lucide-react';
 
-export default function Sidebar({ isOpen, onToggle }: { isOpen: boolean; onToggle: () => void }) {
+export default function Sidebar({ isOpen, onToggle: _onToggle }: { isOpen: boolean; onToggle: () => void }) {
     const { user } = useAuthStore();
     const { t } = useLanguage();
     const location = useLocation();

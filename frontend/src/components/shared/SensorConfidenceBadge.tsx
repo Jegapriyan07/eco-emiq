@@ -3,7 +3,7 @@
  * Displays ML-based sensor confidence score with calibration warnings
  */
 
-import { AlertTriangle, CheckCircle, Wrench } from 'lucide-react';
+import { AlertTriangle, Wrench } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 interface SensorConfidence {

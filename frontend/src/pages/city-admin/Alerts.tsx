@@ -4,7 +4,7 @@
  * Alerts are generated when AQI > 100, PM2.5 > 60, CO > 20, NOx > 1.0
  */
 import { useState, useEffect, useCallback } from 'react';
-import { AlertTriangle, Bell, CheckCircle, Filter, RefreshCw, MessageSquare } from 'lucide-react';
+import { AlertTriangle, CheckCircle, RefreshCw, MessageSquare } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { ML_BASE } from '../../config/api';
 

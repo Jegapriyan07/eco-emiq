@@ -5,7 +5,7 @@
 
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { UserPlus, Mail, Lock, User } from 'lucide-react';
+import { UserPlus, Mail, Lock } from 'lucide-react';
 
 export default function RegisterPage() {
     const [formData, setFormData] = useState({

@@ -6,7 +6,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { AlertTriangle, Activity, Brain, RefreshCw, CheckCircle } from 'lucide-react';
-import { useLanguage } from '../../contexts/LanguageContext';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     Legend
@@ -39,7 +38,6 @@ export default function AnomaliesPage() {
     const [loading, setLoading] = useState(true);
     const [lastScan, setLastScan] = useState(new Date());
     const [dismissed, setDismissed] = useState<string[]>([]);
-    const { t } = useLanguage();
 
     const runAnomalyDetection = useCallback(async () => {
         try {

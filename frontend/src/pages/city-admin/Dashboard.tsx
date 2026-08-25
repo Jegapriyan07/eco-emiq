@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { MapPin, Wifi, AlertTriangle, TrendingUp, BarChart3, RefreshCw, Download, Wind, Thermometer, Droplets, Flame, BrainCircuit } from 'lucide-react';
+import { MapPin, Wifi, AlertTriangle, TrendingUp, BarChart3, RefreshCw, Download, Flame, BrainCircuit } from 'lucide-react';
 import {
     LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, AreaChart, Area, Legend
@@ -523,7 +523,6 @@ export default function CityAdminDashboard() {
     };
 
     const aqiColor = (aqi: number) => aqi <= 50 ? 'text-success-600' : aqi <= 100 ? 'text-warning-600' : 'text-danger-600';
-    const aqiBg = (aqi: number) => aqi <= 50 ? 'bg-success-400/70' : aqi <= 100 ? 'bg-warning-400/70' : 'bg-danger-400/70';
     const badgeColor = (aqi: number) => aqi <= 50 ? 'bg-success-100 text-success-700' : aqi <= 100 ? 'bg-warning-100 text-warning-700' : 'bg-danger-100 text-danger-700';
     const aqiLabel = (aqi: number) => {
         if (aqi <= 50) return t('aqi_good');

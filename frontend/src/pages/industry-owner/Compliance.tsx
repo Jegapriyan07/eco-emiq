@@ -5,13 +5,13 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { CheckCircle, XCircle, AlertTriangle, FileText, Shield, RefreshCw, Download, TrendingUp } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, Shield, RefreshCw, Download } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import ViolationCard, { ViolationData } from '../../components/emiq/ViolationCard';
 import ReductionRecommendationsPanel from '../../components/emiq/ReductionRecommendationsPanel';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    PieChart, Pie, Cell, LineChart, Line, Legend, ReferenceLine
+    PieChart, Pie, Cell, Legend, ReferenceLine
 } from 'recharts';
 import { ML_BASE } from '../../config/api';
 

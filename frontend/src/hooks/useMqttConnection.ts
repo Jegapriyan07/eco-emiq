@@ -30,7 +30,7 @@ export function useMqttConnection(autoConnect = false) {
         setIsConnecting(false);
         client.subscribe("ecotronics/live");
       });
-      client.on("message", (topic, message) => {
+      client.on("message", (_topic, message) => {
         try {
           const parsed = JSON.parse(message.toString());
           setData({ ...parsed, timestamp: Date.now() });

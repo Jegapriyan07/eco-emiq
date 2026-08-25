@@ -18,11 +18,12 @@ import os
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
-# Load from ml-service directory (parent of src)
+# Prefer repo-root .env (DATABASE_URL), then ml-service/.env
 current_dir = os.path.dirname(os.path.abspath(__file__))
 ml_service_dir = os.path.dirname(current_dir)
-env_file = os.path.join(ml_service_dir, '.env')
-load_dotenv(dotenv_path=env_file)
+repo_root = os.path.dirname(ml_service_dir)
+load_dotenv(dotenv_path=os.path.join(repo_root, '.env'))
+load_dotenv(dotenv_path=os.path.join(ml_service_dir, '.env'))
 
 # Add src directory to path so we can import models
 if current_dir not in sys.path:
@@ -30,11 +31,15 @@ if current_dir not in sys.path:
 
 from models.maintenance import MaintenancePredictor
 from models.sensor_confidence import SensorConfidenceModel
-from simulation import (
-    compute_city_snapshot, compute_ward_state, compute_hourly_trend,
-    compute_ward_daily_trends, compute_vehicle_state, compute_vehicle_weekly_trend,
-    WARD_PROFILES
-)
+from models.violation_classifier import ViolationClassifier
+from models.drift_forecast import DriftForecaster
+from agents.compliance_explainer import explain_compliance
+from agents.carbon_advisor import advise_reduction
+from simulation import WARD_PROFILES
+from db import init_database, is_seeded, EmissionRepository, database_label
+from db.seed import seed_demo_database
+
+repo = EmissionRepository()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -62,16 +67,11 @@ maintenance_model: Optional[MaintenancePredictor] = None
 anomaly_data: Optional[dict] = None        # {model, scaler, ...}
 forecast_data: Optional[dict] = None       # {model, scaler, feature_cols, ward_base_aqi, ...}
 sensor_confidence_model: Optional[SensorConfidenceModel] = None
+violation_classifier: Optional[ViolationClassifier] = None
+drift_forecaster = DriftForecaster()
 
-# Ward metadata for realistic data
-WARD_INFO = {
-    'dharampeth': {'name': 'Dharampeth', 'base_aqi': 87, 'devices': 45},
-    'sadar':      {'name': 'Sadar',      'base_aqi': 121, 'devices': 52},
-    'nehru_nagar':{'name': 'Nehru Nagar','base_aqi': 64, 'devices': 38},
-    'dhantoli':   {'name': 'Dhantoli',   'base_aqi': 94, 'devices': 41},
-    'hanuman_nagar':{'name':'Hanuman Nagar','base_aqi': 73, 'devices': 48},
-}
-
+# In-memory dispute store (demo — production uses auth-service DB)
+disputes_store: List[Dict] = []
 
 # ============================================================================
 # REQUEST / RESPONSE SCHEMAS
@@ -155,6 +155,65 @@ class SensorConfidenceResponse(BaseModel):
     model_version: str
 
 
+class ViolationFeatures(BaseModel):
+    co_ppm: float
+    no2_ppm: float
+    nh3_ppm: float
+    pm25_ugm3: float
+    pm10_ugm3: float
+    exhaust_flow_rate: float = 0.12
+    gas_density: float = 1.15
+
+
+class ViolationRequest(BaseModel):
+    device_id: str
+    device_type: str = "vehicle"
+    features: ViolationFeatures
+    sensor_deltas: Optional[Dict] = None
+
+
+class ViolationResponse(BaseModel):
+    device_id: str
+    verdict: str
+    confidence: float
+    model_agreement: float
+    probabilities: Dict[str, float]
+    exceeded_thresholds: List[Dict]
+    explanation: Optional[str] = None
+    corrective_action: Optional[str] = None
+    confidence_note: Optional[str] = None
+    model_version: str
+
+
+class DriftForecastRequest(BaseModel):
+    device_id: str
+    emission_history: List[float]
+    confidence_scores: List[float] = []
+    baseline_shift: float = 0.0
+    current_emission_score: Optional[float] = None
+
+
+class CarbonAdvisorRequest(BaseModel):
+    device_id: str
+    device_type: str = "vehicle"
+    emission_history: List[Dict] = []
+    maintenance_record: Optional[Dict] = None
+
+
+class CarbonImpactRequest(BaseModel):
+    device_count: int = 100
+    compliance_rate_pct: float = 70.0
+    avg_emission_reduction_pct: float = 15.0
+
+
+class DisputeRequest(BaseModel):
+    device_id: str
+    violation_id: str
+    reason: str
+    user_role: str = "vehicle_owner"
+    classifier_confidence: float = 0.0
+
+
 # ============================================================================
 # STARTUP
 # ============================================================================
@@ -162,7 +221,7 @@ class SensorConfidenceResponse(BaseModel):
 @app.on_event("startup")
 async def startup_event():
     """Load all trained .pkl models on startup"""
-    global maintenance_model, anomaly_data, forecast_data, sensor_confidence_model
+    global maintenance_model, anomaly_data, forecast_data, sensor_confidence_model, violation_classifier
 
     project_root = os.path.dirname(current_dir)
     models_dir = os.path.join(project_root, "models")
@@ -205,7 +264,7 @@ async def startup_event():
         logger.warning(f"⚠ Anomaly model not loaded: {e}")
         anomaly_data = None
 
-    # 3. Forecast model (GradientBoosting)
+    # 4. Forecast model (GradientBoosting)
     try:
         forecast_data = joblib.load(os.path.join(models_dir, "forecast_gbr.pkl"))
         logger.info("✅ Forecast model loaded (GradientBoosting)")
@@ -213,10 +272,32 @@ async def startup_event():
         logger.warning(f"⚠ Forecast model not loaded: {e}")
         forecast_data = None
 
-    loaded = sum(1 for x in [maintenance_model, anomaly_data, forecast_data] if x is not None)
-    logger.info(f"\n   Models loaded: {loaded}/3")
-    if loaded < 3:
+    # 5. Violation classifier
+    try:
+        violation_classifier = ViolationClassifier()
+        vpath = os.path.join(models_dir, "violation-classifier", "violation_rf.pkl")
+        violation_classifier.load_model(vpath)
+        logger.info("✅ Violation classifier loaded (RandomForest)")
+    except Exception as e:
+        logger.warning(f"⚠ Violation classifier not loaded: {e}")
+        violation_classifier = None
+
+    loaded = sum(1 for x in [maintenance_model, anomaly_data, forecast_data, violation_classifier] if x is not None)
+    logger.info(f"\n   Models loaded: {loaded}/4")
+    if loaded < 4:
         logger.info("   ⚠ Run 'python train_all_models.py' to train missing models")
+
+    try:
+        init_database()
+        if not is_seeded():
+            logger.info("   📦 Seeding demo database (first run)...")
+            total = seed_demo_database()
+            logger.info(f"   ✅ Seeded {total} readings into emission_readings")
+        else:
+            logger.info(f"   📊 Demo DB ready ({repo.reading_count()} readings)")
+    except Exception as e:
+        logger.warning(f"   ⚠ Database unavailable (set DATABASE_URL): {e}")
+
     logger.info("=" * 50)
 
 
@@ -226,6 +307,27 @@ async def startup_event():
 
 @app.get("/health")
 async def health_check():
+    try:
+        db_url = database_label()
+    except Exception:
+        db_url = "(unavailable)"
+
+    try:
+        database = {
+            "type": "postgresql",
+            "url": db_url,
+            "seeded": is_seeded(),
+            "readings": repo.reading_count(),
+            "schema": "emission_readings (Postgres)",
+        }
+    except Exception as e:
+        database = {
+            "type": "postgresql",
+            "url": db_url,
+            "error": str(e),
+            "schema": "emission_readings (Postgres)",
+        }
+
     return {
         "status": "healthy",
         "service": "ml-service",
@@ -236,7 +338,10 @@ async def health_check():
             "anomaly":     {"loaded": anomaly_data is not None, "type": "IsolationForest"},
             "forecast":    {"loaded": forecast_data is not None, "type": "GradientBoostingRegressor"},
             "sensor_confidence": {"loaded": sensor_confidence_model is not None, "type": "SensorConfidenceModel"},
-        }
+            "violation_classifier": {"loaded": violation_classifier is not None, "type": "RandomForestClassifier"},
+            "drift_forecaster": {"loaded": True, "type": "LinearTrendExtrapolation"},
+        },
+        "database": database,
     }
 
 @app.get("/")
@@ -250,6 +355,12 @@ async def root():
             "/api/v1/ml/predict/anomaly",
             "/api/v1/ml/predict/ward_forecast",
             "/api/v1/ml/predict/sensor_confidence",
+            "/api/v1/ml/predict/violation",
+            "/api/v1/ml/predict/drift_forecast",
+            "/api/v1/ml/agents/compliance-explainer",
+            "/api/v1/ml/agents/carbon-advisor",
+            "/api/v1/ml/carbon-impact",
+            "/api/v1/ml/disputes",
             "/api/v1/ml/wards",
             "/api/v1/ml/models/info",
             "/health",
@@ -371,9 +482,9 @@ async def predict_ward_forecast(ward_id: str, horizon: int = 72):
         model = forecast_data['model']
         scaler = forecast_data['scaler']
         feature_cols = forecast_data['feature_cols']
-        ward_base_aqi = forecast_data.get('ward_base_aqi', {})
+        ward_base_aqi = forecast_data.get('ward_base_aqi', repo.get_ward_base_aqi_map())
 
-        base_aqi = ward_base_aqi.get(ward_id, 80)
+        base_aqi = ward_base_aqi.get(ward_id, WARD_PROFILES.get(ward_id, {}).get('base_aqi', 80))
         now = datetime.now()
         current_hour = now.hour
 
@@ -485,81 +596,63 @@ async def predict_sensor_confidence(request: SensorConfidenceRequest):
 
 
 # ============================================================================
-# SIMULATION ENDPOINTS — physics-based, logically correct
+# DATA ENDPOINTS — seeded PostgreSQL (same schema as production)
+# Legacy /simulate/* paths kept for frontend compatibility
 # ============================================================================
 
 @app.get("/api/v1/ml/wards")
 async def get_wards():
-    """Return all wards using the physics-based simulation engine."""
-    snapshot = compute_city_snapshot()
-    return snapshot['wards']
+    """Return all wards from emission_readings aggregates."""
+    return repo.get_wards_list()
 
 
 @app.get("/api/v1/ml/simulate/city")
 async def get_city_snapshot():
-    """Full city snapshot: all wards + aggregates + threshold-based alerts."""
-    return compute_city_snapshot()
+    """Full city snapshot from seeded emission_readings."""
+    return repo.get_city_snapshot()
 
 
 @app.get("/api/v1/ml/simulate/ward/{ward_id}")
 async def get_ward_state(ward_id: str):
-    """Single ward state with correlated pollutant values."""
+    """Single ward state from latest DB readings."""
     if ward_id not in WARD_PROFILES:
         raise HTTPException(status_code=404, detail=f"Ward '{ward_id}' not found")
-    return compute_ward_state(ward_id)
+    return repo.get_ward_state(ward_id)
 
 
 @app.get("/api/v1/ml/simulate/ward_hourly/{ward_id}")
 async def get_ward_hourly(ward_id: str, hours: int = 24):
-    """Past N hours trend for a ward (each data point is physics-consistent)."""
+    """Past N hours trend from emission_readings."""
     if ward_id not in WARD_PROFILES:
         raise HTTPException(status_code=404, detail=f"Ward '{ward_id}' not found")
     if hours > 72:
         hours = 72
-    return compute_hourly_trend(ward_id, hours)
+    return repo.get_hourly_trend(ward_id, hours)
 
 
 @app.get("/api/v1/ml/simulate/ward_trends")
 async def get_ward_daily_trends():
-    """All-wards AQI at key time points today (6AM, 9AM, 12PM, etc)."""
-    return compute_ward_daily_trends()
+    """All-wards AQI at key time points today."""
+    return repo.get_ward_daily_trends()
 
 
 @app.get("/api/v1/ml/simulate/alerts")
 async def get_alerts():
-    """All currently active alerts across all wards (threshold-based)."""
-    snapshot = compute_city_snapshot()
-    return snapshot['alerts']
+    """Active alerts derived from latest emission_readings."""
+    return repo.get_alerts()
 
 
 @app.get("/api/v1/ml/simulate/vehicle")
 async def get_vehicle_state(vehicle_id: str = 'MH-31-AB-1234'):
-    """Vehicle emission state — correlated with traffic and engine warmth."""
-    return compute_vehicle_state(vehicle_id)
+    """Vehicle emission state from emission_readings."""
+    return repo.get_vehicle_state(vehicle_id)
 
 
 @app.get("/api/v1/ml/simulate/vehicle_weekly")
 async def get_vehicle_weekly():
-    """Weekly emission trend (weekdays vs weekends with proper traffic model)."""
-    return compute_vehicle_weekly_trend()
+    """Weekly emission trend from stored readings."""
+    return repo.get_vehicle_weekly()
 
-
-@app.get("/api/v1/ml/simulate/governance")
-async def get_governance_status(role: str = 'vehicle_owner', emission_value: float = 0.0, threshold_value: float = 80.0):
-    """
-    Returns governance status threshold logic
-    """
-    is_violation = emission_value > threshold_value
-    return {
-        "role": role,
-        "emission_value": emission_value,
-        "threshold_value": threshold_value,
-        "status": "Non-Compliant" if is_violation else "Compliant",
-        "alert_triggered": is_violation,
-        "violation_logged": is_violation,
-        "timestamp": datetime.now().isoformat(),
-        "message": f"Emission {'exceeds' if is_violation else 'within'} safe limits."
-    }
 
 class WhatsAppRequest(BaseModel):
     phone: str
@@ -636,28 +729,251 @@ async def trigger_whatsapp(request: WhatsAppRequest):
         raise HTTPException(status_code=500, detail=f"WhatsApp delivery failed: {str(e)}")
 
 
+@app.post("/api/v1/ml/predict/violation", response_model=ViolationResponse)
+async def predict_violation(request: ViolationRequest):
+    """Classify emission reading as Compliant, Warning, or Violation."""
+    try:
+        if violation_classifier is None or violation_classifier.model is None:
+            raise HTTPException(status_code=503, detail="Violation classifier not loaded. Run train_all_models.py first.")
+
+        features_dict = request.features.model_dump()
+        result = violation_classifier.predict(features_dict)
+
+        explanation = None
+        corrective_action = None
+        confidence_note = None
+
+        if result["verdict"] in ("Warning", "Violation"):
+            agent_out = explain_compliance(
+                verdict=result["verdict"],
+                confidence=result["confidence"],
+                exceeded_thresholds=result["exceeded_thresholds"],
+                sensor_deltas=request.sensor_deltas,
+                device_type=request.device_type,
+            )
+            explanation = agent_out.get("explanation")
+            corrective_action = agent_out.get("corrective_action")
+            confidence_note = agent_out.get("confidence_note")
+
+        return ViolationResponse(
+            device_id=request.device_id,
+            verdict=result["verdict"],
+            confidence=result["confidence"],
+            model_agreement=result["model_agreement"],
+            probabilities=result["probabilities"],
+            exceeded_thresholds=result["exceeded_thresholds"],
+            explanation=explanation,
+            corrective_action=corrective_action,
+            confidence_note=confidence_note,
+            model_version=result["model_version"],
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Violation prediction error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/ml/predict/drift_forecast")
+async def predict_drift_forecast(request: DriftForecastRequest):
+    """Forecast days until violation/service from drift intelligence signals."""
+    try:
+        result = drift_forecaster.forecast(
+            emission_history=request.emission_history,
+            confidence_scores=request.confidence_scores,
+            baseline_shift=request.baseline_shift,
+            current_emission_score=request.current_emission_score,
+        )
+        return {"device_id": request.device_id, **result}
+    except Exception as e:
+        logger.error(f"Drift forecast error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/ml/agents/compliance-explainer")
+async def compliance_explainer_agent(request: ViolationRequest):
+    """Compliance Explainer Agent — plain-language why + corrective action."""
+    try:
+        if violation_classifier is None:
+            raise HTTPException(status_code=503, detail="Violation classifier not loaded")
+
+        result = violation_classifier.predict(request.features.model_dump())
+        agent_out = explain_compliance(
+            verdict=result["verdict"],
+            confidence=result["confidence"],
+            exceeded_thresholds=result["exceeded_thresholds"],
+            sensor_deltas=request.sensor_deltas,
+            device_type=request.device_type,
+        )
+        return {
+            "device_id": request.device_id,
+            "verdict": result["verdict"],
+            "confidence": result["confidence"],
+            **agent_out,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/ml/agents/carbon-advisor")
+async def carbon_advisor_agent(request: CarbonAdvisorRequest):
+    """Carbon Reduction Advisor Agent — prioritized reduction recommendations."""
+    try:
+        drift = None
+        if request.emission_history:
+            scores = [h.get("emission_score", h.get("score", 50)) for h in request.emission_history]
+            drift = drift_forecaster.forecast(
+                emission_history=scores,
+                confidence_scores=[0.85] * len(scores),
+            )
+
+        result = advise_reduction(
+            device_id=request.device_id,
+            device_type=request.device_type,
+            emission_history=request.emission_history,
+            maintenance_record=request.maintenance_record,
+            drift_forecast=drift,
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Carbon advisor error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/v1/ml/agents/carbon-advisor/{device_id}")
+async def carbon_advisor_for_device(device_id: str, device_type: str = "vehicle"):
+    """Fetch reduction recommendations using DB history for a device."""
+    try:
+        history = repo.get_device_emission_history(device_id, days=14)
+        maintenance = None
+
+        drift = None
+        if history:
+            scores = [h.get("emission_score", 50) for h in history]
+            drift = drift_forecaster.forecast(emission_history=scores, confidence_scores=[0.85] * len(scores))
+            if drift:
+                maintenance = {"days_until_service": drift.get("days_until_service_needed")}
+
+        return advise_reduction(device_id, device_type, history, maintenance, drift)
+    except Exception as e:
+        logger.error(f"Carbon advisor device fetch error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/ml/carbon-impact")
+async def calculate_carbon_impact(request: CarbonImpactRequest):
+    """
+    City-wide carbon impact calculator (C2).
+    Transparent assumptions — honest estimate, not unsourced impressive numbers.
+    """
+    n = max(1, request.device_count)
+    rate = request.compliance_rate_pct / 100
+    reduction = request.avg_emission_reduction_pct / 100
+
+    # Assumption: avg device emits ~2.1 tonnes CO₂e/year excess when non-compliant
+    avg_excess_tonnes_per_device = 2.1
+    participating = int(n * rate)
+    annual_reduction_tonnes = round(participating * avg_excess_tonnes_per_device * reduction, 2)
+
+    return {
+        "device_count": n,
+        "participating_devices": participating,
+        "compliance_rate_pct": request.compliance_rate_pct,
+        "avg_emission_reduction_pct": request.avg_emission_reduction_pct,
+        "estimated_annual_co2e_reduction_tonnes": annual_reduction_tonnes,
+        "estimated_annual_co2e_reduction_kg": annual_reduction_tonnes * 1000,
+        "assumptions": {
+            "avg_excess_emissions_per_non_compliant_device_tonnes_co2e_per_year": avg_excess_tonnes_per_device,
+            "participation_model": "N devices × compliance_rate × reduction_pct × avg_excess",
+            "note": "Illustrative estimate for planning. Pilot validation required for city-specific figures.",
+        },
+    }
+
+
+@app.post("/api/v1/ml/disputes")
+async def submit_dispute(request: DisputeRequest):
+    """Appeal/dispute mechanism (F1) — routes low-confidence flags to human review."""
+    import uuid
+    dispute = {
+        "id": str(uuid.uuid4())[:8],
+        "device_id": request.device_id,
+        "violation_id": request.violation_id,
+        "reason": request.reason,
+        "user_role": request.user_role,
+        "classifier_confidence": request.classifier_confidence,
+        "status": "pending_review" if request.classifier_confidence < 0.7 else "under_review",
+        "requires_human_review": request.classifier_confidence < 0.7,
+        "submitted_at": datetime.utcnow().isoformat(),
+        "message": (
+            "Your dispute has been submitted. Low-confidence flags are routed to human review — "
+            "no auto-enforcement will occur until reviewed."
+        ),
+    }
+    disputes_store.append(dispute)
+    return dispute
+
+
+@app.get("/api/v1/ml/disputes")
+async def list_disputes(device_id: Optional[str] = None):
+    if device_id:
+        return [d for d in disputes_store if d["device_id"] == device_id]
+    return disputes_store
+
+
 @app.get("/api/v1/ml/predict/batch_maintenance")
 async def batch_maintenance_predictions():
-    """Predict maintenance for demo devices using real ML model."""
+    """Predict maintenance for fleet devices using DB aggregates + ML model."""
     if maintenance_model is None or maintenance_model.model is None:
         raise HTTPException(status_code=503, detail="Maintenance model not loaded")
 
-    demo_devices = [
-        {"device_id": "VH-001", "runtime_hours": 1250, "emission_score_mean": 65, "emission_score_std": 15, "days_since_service": 75, "temperature_avg": 78, "rpm_variance": 250},
-        {"device_id": "VH-002", "runtime_hours": 800, "emission_score_mean": 42, "emission_score_std": 8,  "days_since_service": 30, "temperature_avg": 72, "rpm_variance": 150},
-        {"device_id": "GN-001", "runtime_hours": 2200, "emission_score_mean": 72, "emission_score_std": 22, "days_since_service": 120, "temperature_avg": 85, "rpm_variance": 400},
-        {"device_id": "GN-002", "runtime_hours": 600, "emission_score_mean": 38, "emission_score_std": 5,  "days_since_service": 15, "temperature_avg": 68, "rpm_variance": 100},
-        {"device_id": "IN-001", "runtime_hours": 3500, "emission_score_mean": 88, "emission_score_std": 25, "days_since_service": 150, "temperature_avg": 92, "rpm_variance": 500},
-    ]
+    import numpy as np
+    from sqlalchemy import text
+    from db.connection import get_connection
 
     results = []
-    for dev in demo_devices:
-        device_id = dev.pop("device_id")
-        prediction = maintenance_model.predict(dev)
-        results.append({
-            "device_id": device_id,
-            **prediction,
-        })
+    with get_connection() as conn:
+        devices = conn.execute(
+            text(
+                """
+                SELECT id, runtime_hours, days_since_service, rpm_variance
+                FROM devices WHERE type IN ('vehicle', 'generator', 'industrial')
+                """
+            )
+        ).mappings().fetchall()
+
+        for dev in devices:
+            scores = conn.execute(
+                text(
+                    """
+                    SELECT (metadata->>'emission_score')::float AS s, temperature
+                    FROM emission_readings
+                    WHERE device_id = :device_id
+                      AND metadata->>'emission_score' IS NOT NULL
+                    """
+                ),
+                {'device_id': dev['id']},
+            ).mappings().fetchall()
+
+            if len(scores) < 2:
+                continue
+
+            score_vals = [float(s['s']) for s in scores if s['s'] is not None]
+            temps = [float(s['temperature']) for s in scores if s['temperature'] is not None]
+            features = {
+                'runtime_hours': dev['runtime_hours'],
+                'emission_score_mean': float(np.mean(score_vals)),
+                'emission_score_std': float(np.std(score_vals)),
+                'days_since_service': dev['days_since_service'],
+                'temperature_avg': float(np.mean(temps)) if temps else 75.0,
+                'rpm_variance': dev['rpm_variance'],
+            }
+            prediction = maintenance_model.predict(features)
+            results.append({'device_id': dev['id'], **prediction})
+
+    if not results:
+        raise HTTPException(status_code=503, detail="No device readings in database for maintenance batch")
 
     return results
 
@@ -684,7 +1000,18 @@ async def get_models_info():
             "loaded": forecast_data is not None,
             "version": forecast_data.get('version') if forecast_data else None,
             "type": "GradientBoostingRegressor",
-        }
+        },
+        "violation_classifier": {
+            "loaded": violation_classifier is not None and violation_classifier.model is not None,
+            "version": violation_classifier.version if violation_classifier else None,
+            "type": "RandomForestClassifier",
+            "outputs": ["Compliant", "Warning", "Violation"],
+        },
+        "drift_forecaster": {
+            "loaded": True,
+            "version": drift_forecaster.version,
+            "type": "LinearTrendExtrapolation",
+        },
     }
 
 

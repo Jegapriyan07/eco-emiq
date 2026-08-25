@@ -9,18 +9,18 @@
     "shared"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "dev:backend": "docker compose up",
+    "dev": "concurrently \"npm run dev:ml\" \"npm run dev:frontend\"",
+    "dev:ml": "node scripts/start-ml.js",
     "dev:frontend": "cd frontend && npm run dev",
     "dev:edge": "cd edge-device && npm run dev",
+    "db:seed": "cd ml-service && python scripts/seed_demo_db.py",
+    "ml:train": "cd ml-service && python train_all_models.py",
     "test": "npm run test --workspaces",
     "test:unit": "jest",
     "test:e2e": "playwright test",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "build": "npm run build --workspaces",
-    "docker:up": "docker compose up -d",
-    "docker:down": "docker compose down",
     "setup": "node scripts/setup.js",
     "demo": "node scripts/demo.js"
   },

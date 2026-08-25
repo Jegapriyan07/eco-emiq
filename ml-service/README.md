@@ -34,28 +34,31 @@ Machine Learning microservice for the EcoTronics emission monitoring platform. P
 
 ## 🚀 Quick Start
 
-### Method 1: Direct Python
+### Data layer
+
+Dashboard and ML training read from **`emission_readings`** in **PostgreSQL** (`DATABASE_URL`).
+Schema lives in `ml-service/src/db/schema.sql` and mirrors production time-series design in `infrastructure/init-timescaledb.sql`.
+
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+# Set DATABASE_URL (local or Render Postgres)
+# export DATABASE_URL=postgresql://ecotronics:password@localhost:5432/ecotronics
 
-# Start service
-uvicorn src.main:app --reload
+# Seed physics-based demo data
+npm run db:seed
 
-# Access API docs
-open http://localhost:8000/docs
+# Train sklearn models from DB rows
+npm run ml:train
 ```
 
-### Method 2: Docker
+Production path: hardware/edge → ML API ingest → PostgreSQL → same SQL feature queries.
+
+### Run the service
+
 ```bash
-# Build
-docker build -t ecotronics-ml .
-
-# Run
-docker run -p 8000:8000 ecotronics-ml
-
-# Test
-curl http://localhost:8000/health
+pip install -r requirements.txt
+uvicorn src.main:app --reload --port 8000
+# Or from project root: npm run dev:ml
+# API docs: http://localhost:8000/docs
 ```
 
 ---
@@ -162,41 +165,6 @@ def load_real_data():
 - `mlflow` - Experiment tracking
 - `redis` - Feature store
 - `sqlalchemy` - Database ORM
-
----
-
-## 🐳 Docker Deployment
-
-### Build Image
-```bash
-docker build -t ecotronics-ml:latest .
-```
-
-### Run Container
-```bash
-docker run -d \
-  --name ml-service \
-  -p 8000:8000 \
-  -e DATABASE_URL=postgresql://... \
-  -v $(pwd)/models:/app/models \
-  ecotronics-ml:latest
-```
-
-### Docker Compose
-```yaml
-ml-service:
-  build: ./ml-service
-  ports:
-    - "8000:8000"
-  environment:
-    - DATABASE_URL=${DATABASE_URL}
-    - REDIS_URL=${REDIS_URL}
-  volumes:
-    - ./ml-service/models:/app/models
-  depends_on:
-    - postgres
-    - redis
-```
 
 ---
 
@@ -323,13 +291,17 @@ python src/validation/validate_all.py
 
 ### 3. Deploy
 ```bash
-docker-compose up -d ml-service
+# From project root
+npm run dev:ml
+
+# Or directly
+uvicorn src.main:app --host 0.0.0.0 --port 8000
 ```
 
 ### 4. Monitor
 ```bash
-# Check logs
-docker logs -f ml-service
+# Check health
+curl http://localhost:8000/health
 
 # Check metrics
 curl http://localhost:8000/metrics
@@ -377,7 +349,6 @@ ml-service/
 ├── models/                  # Saved models
 ├── tests/                   # Test suite
 ├── notebooks/               # Jupyter notebooks
-├── Dockerfile
 ├── requirements.txt
 └── README.md
 ```

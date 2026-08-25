@@ -10,12 +10,15 @@
  * - Functional notification bell with dropdown
  */
 
-import { useState, useEffect, useCallback, useRef, Component } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useMqttConnection } from '../../hooks/useMqttConnection';
 import { useMockVehicleData } from '../../hooks/useMockVehicleData';
 import { useUsbConnection } from '../../hooks/useUsbConnection';
 import { Activity, TrendingUp, Wrench, AlertTriangle, Gauge, RefreshCw, Download, Bell, Usb, Wifi, X, CheckCircle2, Flame, BrainCircuit } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Line } from 'recharts';
 import SensorConfidenceBadge from '../../components/shared/SensorConfidenceBadge';
+import ViolationCard, { ViolationData } from '../../components/emiq/ViolationCard';
+import ReductionRecommendationsPanel from '../../components/emiq/ReductionRecommendationsPanel';
 
 const ML_BASE = '/ml-api';
 
@@ -61,6 +64,14 @@ interface SensorConfidence {
     recommendations: string[];
 }
 
+interface DriftForecast {
+    days_until_service_needed: number;
+    risk_trend: string;
+    severity: string;
+}
+
+interface ViolationState extends ViolationData {}
+
 interface Notification {
     id: string;
     type: 'warning' | 'info' | 'success';
@@ -99,95 +110,74 @@ function getScoreStrokeColor(emissionScore: number) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 
-class DashboardErrorBoundary extends Component<{ children: React.ReactNode }, { error: any }> {
-    state = { error: null as any };
-
-    static getDerivedStateFromError(error: any) {
-        return { error };
-    }
-
-    componentDidCatch(error: any, info: any) {
-        // Keeps details in DevTools console
-        // eslint-disable-next-line no-console
-        console.error('Dashboard crashed:', error, info);
-    }
-
-    render() {
-        if (!this.state.error) return this.props.children;
-
-        const msg =
-            typeof this.state.error?.message === 'string'
-                ? this.state.error.message
-                : String(this.state.error);
-
-        return (
-            <div className="p-6">
-                <div className="max-w-3xl bg-white dark:bg-gray-800 border border-red-200 dark:border-red-800 rounded-xl shadow p-5">
-                    <h2 className="text-lg font-semibold text-red-700 dark:text-red-300">Dashboard render error</h2>
-                    <p className="text-sm text-gray-700 dark:text-gray-300 mt-2">
-                        The frontend went blank because a runtime error occurred while rendering this page.
-                    </p>
-                    <pre className="mt-3 text-xs whitespace-pre-wrap break-words text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 p-3 rounded">
-                        {msg}
-                    </pre>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
-                        Open DevTools → Console for the full stack trace.
-                    </p>
-                </div>
-            </div>
-        );
-    }
-}
-
-function VehicleOwnerDashboardInner() {
-    // --- State declared first so WiFi callbacks can access readings ---
+export default function VehicleOwnerDashboard() {
+    const { isConnected: mqttConnected, isConnecting: mqttConnecting, data: mqttData, connect: mqttConnect, disconnect: mqttDisconnect } = useMqttConnection(false);
+    const { status: usbStatus, isConnected: usbConnected, isConnecting: usbConnecting, isUnsupported: usbUnsupported, data: usbData, error: usbError, connect: usbConnect, disconnect: usbDisconnect } = useUsbConnection();
+    const mockData = useMockVehicleData();
     const [readings, setReadings] = useState<VehicleState | null>(null);
     const [weeklyTrend, setWeeklyTrend] = useState<WeeklyPoint[]>([]);
     const [maintenance, setMaintenance] = useState<MaintenancePrediction | null>(null);
     const [sensorConfidence, setSensorConfidence] = useState<SensorConfidence | null>(null);
+    const [violation, setViolation] = useState<ViolationState | null>(null);
+    const [violationLoading, setViolationLoading] = useState(false);
+    const [violationError, setViolationError] = useState<string | null>(null);
+    const [driftForecast, setDriftForecast] = useState<DriftForecast | null>(null);
     const [running, setRunning] = useState(true);
     const [lastUpdate, setLastUpdate] = useState(new Date());
 
-    // --- WiFi (shows "Connected through MQTT" instantly, simulates data) ---
-    const wifiSimIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-    const [mqttConnected, setMqttConnected] = useState(false);
-    const [mqttData, setMqttData] = useState<any>(null);
-
-    const mqttDisconnect = useCallback(() => {
-        if (wifiSimIntervalRef.current) { clearInterval(wifiSimIntervalRef.current); wifiSimIntervalRef.current = null; }
-        setMqttConnected(false);
-        setMqttData(null);
+    const fetchViolation = useCallback(async (vehicleData: VehicleState) => {
+        setViolationLoading(true);
+        setViolationError(null);
+        try {
+            const res = await fetch(`${ML_BASE}/predict/violation`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    device_id: vehicleData.vehicle_id,
+                    device_type: 'vehicle',
+                    features: {
+                        co_ppm: vehicleData.co,
+                        no2_ppm: vehicleData.nox,
+                        nh3_ppm: vehicleData.co * 0.3,
+                        pm25_ugm3: vehicleData.pm25,
+                        pm10_ugm3: vehicleData.pm25 * 1.6,
+                        exhaust_flow_rate: 0.12,
+                        gas_density: 1.15,
+                    },
+                }),
+            });
+            if (res.ok) {
+                setViolation(await res.json());
+            } else {
+                setViolationError('ML service unavailable. Run `npm run dev` from project root (starts ML + frontend).');
+            }
+        } catch (e) {
+            console.error('Violation fetch failed:', e);
+            setViolationError('Cannot reach ML API at localhost:8000. Start the ML service with `npm run dev:ml`.');
+        } finally {
+            setViolationLoading(false);
+        }
     }, []);
 
-    const mqttConnect = useCallback(() => {
-        if (mqttConnected) return;
-        setMqttConnected(true);
-
-        const baseAqi = readings ? Math.max(0, Math.min(100, readings.emission_score + (Math.random() * 4 - 2))) : 38;
-        const baseCo2 = readings ? readings.co2 || 510 : 510;
-        const baseNh3 = readings ? readings.co || 1.1 : 1.1;
-        const baseTemp = readings ? readings.engine_temp || 31 : 31;
-
-        let curAqi = baseAqi, curCo2 = baseCo2, curNh3 = baseNh3, curTemp = baseTemp;
-
-        const tick = () => {
-            curAqi = parseFloat(Math.min(baseAqi + 3, Math.max(baseAqi - 3, curAqi + (Math.random() * 1 - 0.5))).toFixed(1));
-            curCo2 = Math.round(Math.min(baseCo2 + 15, Math.max(baseCo2 - 15, curCo2 + (Math.random() * 4 - 2))));
-            curNh3 = parseFloat(Math.min(baseNh3 + 0.3, Math.max(baseNh3 - 0.3, curNh3 + (Math.random() * 0.1 - 0.05))).toFixed(2));
-            curTemp = parseFloat(Math.min(baseTemp + 2, Math.max(baseTemp - 2, curTemp + (Math.random() * 0.4 - 0.2))).toFixed(1));
-            setMqttData({ aqi: curAqi, co2: curCo2, nh3: curNh3, temp: curTemp });
-            setLastUpdate(new Date());
-        };
-
-        tick();
-        wifiSimIntervalRef.current = setInterval(tick, 4000);
-    }, [mqttConnected, readings]);
-
-    useEffect(() => { return () => mqttDisconnect(); }, [mqttDisconnect]);
-
-    const { status: usbStatus, isConnected: usbConnected, isConnecting: usbConnecting, isUnsupported: usbUnsupported, data: usbData, error: usbError, connect: usbConnect, disconnect: usbDisconnect } = useUsbConnection();
-    // Pause simulation polling whenever a real sensor (USB or MQTT) is active
-    const mockData = useMockVehicleData(usbConnected || mqttConnected);
+    const fetchDriftForecast = useCallback(async () => {
+        try {
+            const scores = weeklyTrend.map(d => d.score);
+            if (scores.length < 2) return;
+            const res = await fetch(`${ML_BASE}/predict/drift_forecast`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    device_id: readings?.vehicle_id || 'vehicle',
+                    emission_history: scores,
+                    confidence_scores: scores.map(() => sensorConfidence?.confidence_score ?? 0.85),
+                    current_emission_score: readings?.emission_score,
+                }),
+            });
+            if (res.ok) setDriftForecast(await res.json());
+        } catch (e) {
+            console.error(e);
+        }
+    }, [weeklyTrend, readings, sensorConfidence]);
 
     const fetchVehicle = useCallback(async () => {
         try {
@@ -252,42 +242,36 @@ function VehicleOwnerDashboardInner() {
         }
     }, []);
 
-    // Fetch sensor confidence when readings update
     useEffect(() => {
         if (readings) {
             fetchSensorConfidence(readings);
+            fetchViolation(readings);
         }
-    }, [readings, fetchSensorConfidence]);
+    }, [readings, fetchSensorConfidence, fetchViolation]);
+
+    useEffect(() => {
+        if (weeklyTrend.length >= 2) fetchDriftForecast();
+    }, [weeklyTrend, fetchDriftForecast]);
 
     // Priority: USB > MQTT > Mock/API
-    // Guard: only use USB data once at least one real sensor value is present.
-    // This prevents all-zero readings (from field-name mismatch or first packet delay)
-    // from replacing simulation data while the device warms up.
     useEffect(() => {
         if (usbConnected && usbData) {
-            const hasRealData = (usbData.aqi ?? 0) > 0
-                || (usbData.co ?? 0) > 0
-                || (usbData.pm25 ?? 0) > 0
-                || (usbData.temp ?? 0) > 0;
-
-            if (hasRealData) {
-                setReadings({
-                    vehicle_id: 'usb-sensor',
-                    timestamp: new Date().toISOString(),
-                    emission_score: usbData.aqi ?? 0,
-                    co: usbData.co ?? 0,
-                    co2: usbData.co2 ?? 0,
-                    nox: usbData.nox ?? 0,
-                    pm25: usbData.pm25 ?? 0,
-                    carbon_footprint: 0,
-                    drift_intelligence_score: 0,
-                    engine_temp: usbData.temp ?? 0,
-                    ambient_temp: 0,
-                    traffic_load: 0,
-                    label: 'Live (USB)',
-                });
-                setLastUpdate(new Date());
-            }
+            setReadings({
+                vehicle_id: 'usb-sensor',
+                timestamp: new Date().toISOString(),
+                emission_score: usbData.aqi ?? 0,
+                co: usbData.co ?? 0,
+                co2: usbData.co2 ?? 0,
+                nox: usbData.nox ?? 0,
+                pm25: usbData.pm25 ?? 0,
+                carbon_footprint: 0,
+                drift_intelligence_score: 0,
+                engine_temp: usbData.temp ?? 0,
+                ambient_temp: 0,
+                traffic_load: 0,
+                label: 'Live (USB)',
+            });
+            setLastUpdate(new Date());
         } else if (mqttConnected && mqttData) {
             setReadings({
                 vehicle_id: 'esp32-mqtt',
@@ -309,18 +293,17 @@ function VehicleOwnerDashboardInner() {
         }
     }, [usbConnected, usbData, mqttConnected, mqttData, mockData]);
 
-
     useEffect(() => {
         fetchWeekly();
         fetchMaintenance();
     }, []);
 
     useEffect(() => {
-        // Stop API polling when a real/simulated sensor is active
-        if (!running || usbConnected || mqttConnected) return;
+        if (!running) return;
         const interval = setInterval(fetchVehicle, 5000);
         return () => clearInterval(interval);
-    }, [running, usbConnected, mqttConnected]);
+    }, [running]);
+
 
     const handleExport = () => {
         if (!readings) return;
@@ -358,46 +341,44 @@ function VehicleOwnerDashboardInner() {
                         </span>
                     </p>
                 </div>
-                <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                <div className="flex items-center gap-2 flex-wrap">
                     {/* WiFi Connect */}
                     <button
-                        onClick={mqttConnected ? mqttDisconnect : mqttConnect}
-                        className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mqttConnected
-                            ? 'bg-success-100 text-success-700 hover:bg-success-200'
-                            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                            }`}
+                        onClick={mqttConnected ? mqttDisconnect : () => mqttConnect()}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mqttConnected ? 'bg-success-100 text-success-700 hover:bg-success-200' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
+                        disabled={mqttConnecting}
+                        title={mqttConnected ? 'Disconnect WiFi (MQTT)' : 'Connect via WiFi (MQTT)'}
                     >
                         <Wifi className="w-4 h-4" />
-                        {mqttConnected ? '✓ Connected through MQTT' : 'WiFi'}
+                        {mqttConnecting ? 'Connecting…' : mqttConnected ? 'WiFi Connected' : 'WiFi'}
                     </button>
 
                     {/* USB Connect */}
                     <button
                         onClick={usbConnected ? usbDisconnect : () => usbConnect()}
                         disabled={usbConnecting || usbUnsupported}
-                        title={
-                            usbUnsupported ? 'USB requires Chrome or Edge browser' :
-                                usbConnected ? 'Click to disconnect USB sensor' :
-                                    usbStatus === 'error' ? (usbError ?? 'USB connection failed — click to retry') :
-                                        'Connect USB sensor (ESP32 / Arduino)'
-                        }
-                        className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors
+                        title={usbUnsupported ? 'USB requires Chrome or Edge browser' : usbConnected ? 'Disconnect USB sensor' : 'Connect USB sensor (ESP32 / Arduino)'}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors
                             ${usbUnsupported ? 'opacity-40 cursor-not-allowed bg-gray-100 dark:bg-gray-700 text-gray-500' :
                                 usbConnected ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300' :
-                                    usbStatus === 'error' ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300' :
+                                    usbStatus === 'error' ? 'bg-red-100 text-red-700 hover:bg-redigo-200' :
                                         'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
                     >
                         <Usb className="w-4 h-4" />
-                        {usbConnecting ? 'Connecting…' : usbConnected ? 'USB Connected' : usbUnsupported ? 'USB N/A' : usbStatus === 'error' ? '↺ Retry USB' : 'USB'}
+                        {usbConnecting ? 'Connecting…' : usbConnected ? 'USB Connected' : usbUnsupported ? 'USB N/A' : usbStatus === 'error' ? 'USB Error' : 'USB'}
                     </button>
+
+                    {usbError && (
+                        <span className="text-xs text-red-500 max-w-[180px] truncate" title={usbError}>⚠ {usbError}</span>
+                    )}
 
                     <button
                         onClick={() => setRunning(r => !r)}
-                        className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${running ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white' : 'bg-success-600 text-white'}`}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${running ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white' : 'bg-success-600 text-white'}`}
                     >
                         {running ? 'Pause Live' : '▶ Resume Live'}
                     </button>
-                    <button onClick={handleExport} className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium">
+                    <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium">
                         <Download className="w-4 h-4" /> Export Logs
                     </button>
                 </div>
@@ -410,7 +391,74 @@ function VehicleOwnerDashboardInner() {
                 <StatCard icon={TrendingUp} label="PM2.5" value={`${readings.pm25} μg/m³`} trend={`Ambient: ${readings.ambient_temp}°C`} color="text-purple-600" />
                 <StatCard icon={Flame} label="Carbon Footprint" value={`${readings.carbon_footprint} g`} trend="CO₂e Estimated" color="text-green-600" />
                 <StatCard icon={BrainCircuit} label="Drift Score" value={readings.drift_intelligence_score?.toString() || '0'} trend="Residual" color="text-indigo-600" />
-                <StatCard icon={Wrench} label="Next Service" value={maintenance ? `${maintenance.days_until_service} days` : '—'} trend={maintenance ? `${maintenance.severity} priority` : 'Loading ML...'} color="text-green-600" />
+                <StatCard icon={Wrench} label="Next Service" value={
+                    driftForecast ? `${driftForecast.days_until_service_needed} days` :
+                    maintenance ? `${maintenance.days_until_service}` : '—'
+                } trend={
+                    driftForecast ? `${driftForecast.risk_trend.replace(/_/g, ' ')}` :
+                    maintenance ? `${maintenance.severity} priority` : 'Loading ML...'
+                } color="text-green-600" />
+            </div>
+
+            {/* ── AI Carbon Reduction (visible above the fold) ── */}
+            <div className="space-y-4">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <BrainCircuit className="w-5 h-5 text-indigo-600" />
+                    AI Compliance & Carbon Reduction
+                </h2>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* Violation + Explainer */}
+                    {violationLoading && (
+                        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 animate-pulse">
+                            <p className="text-sm text-gray-500">Loading compliance verdict…</p>
+                        </div>
+                    )}
+                    {violationError && !violationLoading && (
+                        <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-900/20 p-5">
+                            <p className="text-sm font-medium text-amber-800 dark:text-amber-200">{violationError}</p>
+                            <button
+                                onClick={() => readings && fetchViolation(readings)}
+                                className="mt-2 text-xs text-primary-600 hover:underline"
+                            >
+                                Retry
+                            </button>
+                        </div>
+                    )}
+                    {violation && !violationLoading && (
+                        <ViolationCard data={violation} />
+                    )}
+
+                    {/* Drift Forecast */}
+                    <div className="rounded-xl border border-indigo-200 bg-indigo-50 dark:bg-indigo-900/20 dark:border-indigo-800 p-5">
+                        <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                            <TrendingUp className="w-4 h-4 text-indigo-600" />
+                            Drift Forecast — Time to Violation
+                        </h3>
+                        {driftForecast ? (
+                            <div className="mt-3 space-y-2">
+                                <p className="text-3xl font-black text-indigo-700 dark:text-indigo-300">
+                                    {driftForecast.days_until_service_needed} days
+                                </p>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                    Risk trend: <strong>{driftForecast.risk_trend.replace(/_/g, ' ')}</strong>
+                                    {' · '}Severity: <strong>{driftForecast.severity}</strong>
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                    Based on emission score trend + sensor confidence (Sensor Drift Intelligence)
+                                </p>
+                            </div>
+                        ) : (
+                            <p className="mt-3 text-sm text-gray-500">Loading weekly trend for forecast…</p>
+                        )}
+                    </div>
+                </div>
+
+                <ReductionRecommendationsPanel
+                    deviceId={readings.vehicle_id}
+                    deviceType="vehicle"
+                    emissionHistory={weeklyTrend.map(d => ({ co: d.co, nox: d.nox, pm25: d.pm25, emission_score: d.score }))}
+                />
             </div>
 
             {/* Gauge + Live Readings */}
@@ -537,8 +585,8 @@ function VehicleOwnerDashboardInner() {
                 </ResponsiveContainer>
             </div>
 
-            {/* Emission Status Banner */}
-            {(scoreLabel === 'Need Improvement' || scoreLabel === 'Poor') && (
+            {/* Emission Status Banner (when no violation card loaded yet) */}
+            {!violation && !violationLoading && (scoreLabel === 'Need Improvement' || scoreLabel === 'Poor') && (
                 <div className={`border rounded-xl p-6 flex items-start gap-4 ${scoreBg}`}>
                     <AlertTriangle className={`w-6 h-6 flex-shrink-0 ${scoreColor}`} />
                     <div className="flex-1">
@@ -670,13 +718,5 @@ function ReadingRow({ label, value, unit, max }: any) {
                 <div className={`${color} h-2 rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
             </div>
         </div>
-    );
-}
-
-export default function VehicleOwnerDashboard() {
-    return (
-        <DashboardErrorBoundary>
-            <VehicleOwnerDashboardInner />
-        </DashboardErrorBoundary>
     );
 }

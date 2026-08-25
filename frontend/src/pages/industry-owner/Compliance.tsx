@@ -7,6 +7,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { CheckCircle, XCircle, AlertTriangle, FileText, Shield, RefreshCw, Download, TrendingUp } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import ViolationCard, { ViolationData } from '../../components/emiq/ViolationCard';
+import ReductionRecommendationsPanel from '../../components/emiq/ReductionRecommendationsPanel';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, LineChart, Line, Legend, ReferenceLine
@@ -47,6 +49,7 @@ export default function CompliancePage() {
     const [loading, setLoading] = useState(true);
     const [lastUpdate, setLastUpdate] = useState(new Date());
     const [showExport, setShowExport] = useState(false);
+    const [violations, setViolations] = useState<Record<string, ViolationData>>({});
     const { t } = useLanguage();
 
     const fetchCompliance = useCallback(async () => {
@@ -93,6 +96,33 @@ export default function CompliancePage() {
 
             setRecords(newRecords);
             setLastUpdate(new Date());
+
+            // Fetch violation classifier + explainer for non-compliant chambers
+            const vMap: Record<string, ViolationData> = {};
+            for (const r of newRecords) {
+                if (r.overall === 'compliant') continue;
+                try {
+                    const vRes = await fetch(`${ML_BASE}/predict/violation`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            device_id: r.device_id,
+                            device_type: 'industrial',
+                            features: {
+                                co_ppm: r.co,
+                                no2_ppm: r.nox,
+                                nh3_ppm: r.co * 0.25,
+                                pm25_ugm3: r.pm25,
+                                pm10_ugm3: r.pm25 * 1.6,
+                                exhaust_flow_rate: 0.25,
+                                gas_density: 1.2,
+                            },
+                        }),
+                    });
+                    if (vRes.ok) vMap[r.device_id] = await vRes.json();
+                } catch { /* skip */ }
+            }
+            setViolations(vMap);
         } catch (e) {
             console.error('Compliance fetch failed:', e);
         } finally {
@@ -238,6 +268,18 @@ export default function CompliancePage() {
                     </ResponsiveContainer>
                 </div>
             </div>
+
+            {/* AI violation cards for flagged chambers */}
+            {Object.keys(violations).length > 0 && (
+                <div className="space-y-4">
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">AI Compliance Analysis</h2>
+                    {records.filter(r => violations[r.device_id]).map(r => (
+                        <ViolationCard key={r.device_id} data={violations[r.device_id]} userRole="industry_owner" />
+                    ))}
+                </div>
+            )}
+
+            <ReductionRecommendationsPanel deviceId="IND-A01" deviceType="industrial" />
 
             {/* Detailed Table */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">

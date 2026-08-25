@@ -37,9 +37,6 @@ coverage/
 logs/
 *.log
 
-# Docker
-.docker/
-
 # Database
 *.db
 *.sqlite

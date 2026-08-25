@@ -1,0 +1,2 @@
+# Local data directory (optional caches / exports).
+# Demo data now lives in PostgreSQL via DATABASE_URL — not a local .db file.

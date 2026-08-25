@@ -13,15 +13,23 @@ import {
 } from 'recharts';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import CarbonImpactCalculator from '../../components/emiq/CarbonImpactCalculator';
 
-// Fix Leaflet default icon issue (avoids broken image module imports)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+// Fix Leaflet default icon issue
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+const DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    tooltipAnchor: [16, -28],
+    shadowSize: [41, 41]
 });
+
+L.Marker.prototype.options.icon = DefaultIcon;
 
 const ML_BASE = '/ml-api';
 
@@ -597,6 +605,9 @@ export default function CityAdminDashboard() {
                 )}
             </div>
 
+            {/* City-wide carbon impact calculator (C2) */}
+            <CarbonImpactCalculator />
+
             {/* Map + Ward Selector */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Heatmap */}
@@ -652,7 +663,7 @@ export default function CityAdminDashboard() {
                             {deviceConfidences[selectedWard.ward_id] && (
                                 <div className="mt-4 pt-4 border-t border-white/20">
                                     <div className="flex items-center justify-between mb-2">
-                                        <span className="text-xs font-semibold text-white/90">{t('sensor_confidence')}</span>
+                                        <span className="text-xs font-semibold text-white/90">Sensor Confidence</span>
                                         <span className={`text-xs font-bold px-2 py-1 rounded ${deviceConfidences[selectedWard.ward_id].confidence_score >= 0.8 ? 'bg-green-500/30 text-white' :
                                             deviceConfidences[selectedWard.ward_id].confidence_score >= 0.6 ? 'bg-yellow-500/30 text-white' :
                                                 'bg-red-500/30 text-white'

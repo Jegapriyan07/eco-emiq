@@ -1,6 +1,3 @@
-WEBSITE LINK - https://eco-emiq.vercel.app/login
-
- 🥉 **3rd Prize Winner (₹20,000)** at the **Ecotronics Hackathon** for developing an AI-powered carbon emission monitoring platform focused on sustainable and smart city solutions.
 # EcoTronics - Carbon Emission Monitoring Platform
 
 ## 🌍 Vision
@@ -86,7 +83,8 @@ ecotronics/
 │   │   ├── processing/       # Local emission calculation engine
 │   │   ├── storage/          # Local buffer management
 │   │   └── sync/             # Cloud sync when online
-│   └── tests/
+│   ├── tests/
+│   └── package.json
 │
 ├── backend/                  # Cloud microservices
 │   ├── auth-service/
@@ -97,6 +95,10 @@ ecotronics/
 │   ├── analytics-service/
 │   ├── alert-service/
 │   └── reporting-service/
+│
+├── ml-service/               # Python ML API (FastAPI)
+│   ├── src/
+│   └── requirements.txt
 │
 ├── frontend/                 # React web dashboard
 │   ├── src/
@@ -110,7 +112,7 @@ ecotronics/
 │   │   ├── services/
 │   │   └── utils/
 │   ├── public/
-│   └── public/
+│   └── package.json
 │
 ├── shared/                   # Shared libraries and types
 │   ├── types/
@@ -136,8 +138,8 @@ ecotronics/
 
 ### Prerequisites
 - Node.js 18+
-- PostgreSQL 14+
-- Redis 7+
+- Python 3.10+
+- npm 9+
 
 ### Development Setup
 
@@ -146,22 +148,17 @@ ecotronics/
 git clone <repo-url>
 cd ecotronics
 
-# Install dependencies
-npm install
+# Install dependencies (Node + Python ML service)
+npm run setup
 
-# Start backend
-cd backend
-npm install
-npm run dev
-
-# Start frontend (in a new terminal)
-cd ../frontend
-npm install
+# Start frontend + ML service
 npm run dev
 
 # Run tests
 npm test
 ```
+
+Open http://localhost:5173 and use the demo login buttons. ML API docs: http://localhost:8000/docs
 
 ## 🎭 Demo Scenarios
 

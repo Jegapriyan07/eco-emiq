@@ -20,12 +20,11 @@ Before you begin, ensure you have the following installed:
    ```
    Comes with Node.js
 
-3. **Docker Desktop**
+3. **Python 3.10+**
    ```bash
-   docker --version  # Should be 20.0.0 or higher
-   docker-compose --version
+   python --version  # Should be 3.10.0 or higher
    ```
-   Download: https://www.docker.com/products/docker-desktop
+   Download: https://python.org/
 
 4. **Git**
    ```bash
@@ -54,12 +53,11 @@ npm run setup
 ```
 
 The setup script will:
-- ✅ Check all prerequisites
+- ✅ Check all prerequisites (Node.js, Python, Git)
 - ✅ Create `.env` file from template
 - ✅ Install all dependencies
 - ✅ Build shared library
-- ✅ Start Docker services
-- ✅ Initialize databases
+- ✅ Install ML service Python packages
 
 ### Option 2: Manual Setup
 
@@ -82,52 +80,36 @@ npm install
 npm run build
 cd ..
 
-# 5. Start infrastructure services
-docker-compose up -d postgres timescaledb redis mosquitto minio
-
-# 6. Wait for services to be healthy (30 seconds)
-timeout /t 30
-# On Linux/Mac: sleep 30
-
-# 7. Initialize databases
-docker exec -i ecotronics-postgres psql -U ecotronics -d ecotronics < infrastructure/init-db.sql
-docker exec -i ecotronics-timescaledb psql -U ecotronics -d ecotronics_timeseries < infrastructure/init-timescaledb.sql
+# 5. Install ML service dependencies
+cd ml-service
+pip install -r requirements.txt
+cd ..
 ```
 
 ---
 
 ## 🏃 Running the Application
 
-### Phase 0 (Current): Infrastructure Only
-
-Right now, we have the foundation ready. To verify everything works:
+Start frontend and ML service together:
 
 ```bash
-# Check Docker services are running
-docker-compose ps
-
-# You should see:
-# - ecotronics-postgres (healthy)
-# - ecotronics-timescaledb (healthy)
-# - ecotronics-redis (healthy)
-# - ecotronics-mosquitto (healthy)
-# - ecotronics-minio (healthy)
+npm run dev
 ```
 
-### Phase 1 (Coming Soon): Full Application
-
-Once we build the services (Week 1-3), you'll run:
+Or in separate terminals:
 
 ```bash
-# Terminal 1: Start all backend services
-npm run dev:backend
+# Terminal 1: ML service (port 8000)
+npm run dev:ml
 
-# Terminal 2: Start frontend
+# Terminal 2: Frontend (port 5173)
 npm run dev:frontend
 
-# Terminal 3: Start edge device simulator
+# Terminal 3 (optional): Edge device simulator
 npm run dev:edge
 ```
+
+Then open http://localhost:5173 and sign in with a demo account.
 
 ---
 
@@ -247,40 +229,33 @@ npm run test:coverage
 
 ## 🐛 Troubleshooting
 
-### Docker Services Won't Start
+### ML Service Won't Start
 
-**Problem**: `docker-compose up` fails
-
-**Solutions**:
-1. Check Docker Desktop is running
-2. Check ports are not in use:
-   ```bash
-   # Windows
-   netstat -ano | findstr :5432
-   netstat -ano | findstr :6379
-   
-   # Linux/Mac
-   lsof -i :5432
-   lsof -i :6379
-   ```
-3. Stop conflicting services or change ports in `docker-compose.yml`
-
-### Database Initialization Fails
-
-**Problem**: `init-db.sql` fails to execute
+**Problem**: `npm run dev:ml` fails or port 8000 is refused
 
 **Solutions**:
-1. Wait longer for PostgreSQL to be ready (30-60 seconds)
-2. Check database is running:
+1. Install Python 3.10+ and ML dependencies:
    ```bash
-   docker-compose logs postgres
+   pip install -r ml-service/requirements.txt
    ```
-3. Manually run the SQL:
+2. Check port 8000 is free:
    ```bash
-   docker exec -it ecotronics-postgres bash
-   psql -U ecotronics -d ecotronics
-   \i /docker-entrypoint-initdb.d/init.sql
+   netstat -ano | findstr :8000
    ```
+3. Start ML service manually:
+   ```bash
+   cd ml-service
+   uvicorn src.main:app --reload --port 8000
+   ```
+
+### Frontend API Errors (ECONNREFUSED)
+
+**Problem**: Dashboard shows errors for `/ml-api` requests
+
+**Solutions**:
+1. Ensure ML service is running on http://localhost:8000
+2. Check health: http://localhost:8000/health
+3. Restart with `npm run dev`
 
 ### npm install Fails
 
@@ -335,9 +310,8 @@ npm run test:coverage
 - **TypeScript**: https://www.typescriptlang.org/docs/
 - **Express.js**: https://expressjs.com/
 - **React**: https://react.dev/
-- **PostgreSQL**: https://www.postgresql.org/docs/
-- **TimescaleDB**: https://docs.timescale.com/
-- **Docker**: https://docs.docker.com/
+- **FastAPI**: https://fastapi.tiangolo.com/
+- **Python**: https://docs.python.org/3/
 
 ### EcoTronics Concepts
 
@@ -454,36 +428,27 @@ refactor: extract RBAC middleware
 # View all npm scripts
 npm run
 
-# Check Docker service logs
-docker-compose logs -f [service-name]
+# Start frontend + ML service
+npm run dev
 
-# Access PostgreSQL
-docker exec -it ecotronics-postgres psql -U ecotronics
+# Start ML service only
+npm run dev:ml
 
-# Access Redis CLI
-docker exec -it ecotronics-redis redis-cli
-
-# View running containers
-docker-compose ps
-
-# Stop all services
-docker-compose down
-
-# Restart a service
-docker-compose restart [service-name]
+# ML service health check
+curl http://localhost:8000/health
 ```
 
 ---
 
 ## ✅ Checklist for New Developers
 
-- [ ] Prerequisites installed (Node.js, Docker, Git)
+- [ ] Prerequisites installed (Node.js, Python 3.10+, Git)
 - [ ] Repository cloned
 - [ ] `.env` file created and configured
-- [ ] Dependencies installed (`npm install`)
-- [ ] Shared library built (`cd shared && npm run build`)
-- [ ] Docker services running (`docker-compose ps`)
-- [ ] Databases initialized (no errors in logs)
+- [ ] Dependencies installed (`npm run setup`)
+- [ ] Shared library built
+- [ ] ML service dependencies installed (`pip install -r ml-service/requirements.txt`)
+- [ ] App running (`npm run dev`)
 - [ ] Read `PHASE_0_REQUIREMENTS.md`
 - [ ] Read `docs/ARCHITECTURE.md`
 - [ ] Explored shared types (`shared/types/index.ts`)

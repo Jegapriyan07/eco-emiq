@@ -9,13 +9,7 @@ export interface GeneratorState {
     lastUpdate: Date;
 }
 
-/**
- * Generates simulated generator readings locally.
- * @param paused - When true (e.g. USB or MQTT is connected), the tick
- *                 interval is suspended so real sensor data is never
- *                 overwritten by simulated readings.
- */
-export function useMockGeneratorData(paused = false) {
+export function useMockGeneratorData() {
     const [data, setData] = useState<GeneratorState>({
         emission: 45.2,
         temp: 78,
@@ -24,11 +18,7 @@ export function useMockGeneratorData(paused = false) {
         drift_intelligence_score: 0.5,
         lastUpdate: new Date(),
     });
-
     useEffect(() => {
-        // Don't tick while a real sensor is active
-        if (paused) return;
-
         const interval = setInterval(() => {
             setData(prev => {
                 const newEmission = parseFloat((prev.emission + (Math.random() - 0.5) * 3).toFixed(1));
@@ -47,9 +37,7 @@ export function useMockGeneratorData(paused = false) {
                 };
             });
         }, 4000);
-
         return () => clearInterval(interval);
-    }, [paused]); // re-evaluate whenever paused changes
-
+    }, []);
     return data;
 }

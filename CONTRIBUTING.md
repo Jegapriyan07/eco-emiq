@@ -56,7 +56,7 @@ We are committed to providing a welcoming and inclusive environment for all cont
 
 2. Set up your development environment:
    - Node.js 18+
-   - Docker Desktop
+   - Python 3.10+
    - Git
    - VS Code (recommended)
 
@@ -269,7 +269,6 @@ backend/service-name/
 ├── tests/
 │   ├── unit/           # Unit tests
 │   └── integration/    # Integration tests
-├── Dockerfile
 ├── package.json
 └── tsconfig.json
 ```
@@ -440,7 +439,7 @@ If applicable, add screenshots.
 **Environment:**
  - OS: [e.g. Windows 11]
  - Node.js version: [e.g. 18.15.0]
- - Docker version: [e.g. 20.10.23]
+ - Python version: [e.g. 3.10.0]
  - Browser: [e.g. Chrome 110]
 
 **Additional context**

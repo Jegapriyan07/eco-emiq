@@ -1,18 +1,16 @@
 /**
  * Auth Layout
- * Layout for login, registration, and pricing pages
+ * Layout for login and registration pages
  */
 
-import { Outlet, Navigate, useLocation } from 'react-router-dom';
+import { Outlet, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 
 export default function AuthLayout() {
     const { isAuthenticated, user } = useAuthStore();
-    const location = useLocation();
-    const isPricing = location.pathname === '/pricing';
 
-    // Redirect to dashboard if already authenticated (unless viewing pricing)
-    if (isAuthenticated && !isPricing) {
+    // Redirect to dashboard if already authenticated
+    if (isAuthenticated) {
         const dashboardPath =
             user?.role === 'vehicle_owner'
                 ? '/vehicle-owner'
@@ -23,15 +21,6 @@ export default function AuthLayout() {
                         : '/city-admin';
 
         return <Navigate to={dashboardPath} replace />;
-    }
-
-    // Full-width layout for pricing page
-    if (isPricing) {
-        return (
-            <div className="min-h-screen bg-slate-950">
-                <Outlet />
-            </div>
-        );
     }
 
     return (
@@ -46,12 +35,17 @@ export default function AuthLayout() {
                 </div>
 
                 {/* Content */}
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 relative pt-14">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
                     <Outlet />
                 </div>
 
                 {/* Footer */}
-                <p className="text-center text-sm text-gray-500 mt-8">
+                <div className="text-center text-sm text-gray-500 mt-8 space-x-3">
+                    <a href="/pricing" className="hover:text-primary-600">Pricing</a>
+                    <a href="/how-it-compares" className="hover:text-primary-600">Compare</a>
+                    <a href="/trust" className="hover:text-primary-600">Trust</a>
+                </div>
+                <p className="text-center text-sm text-gray-500 mt-4">
                     © 2026 EMIQ. Built for a sustainable future.
                 </p>
             </div>

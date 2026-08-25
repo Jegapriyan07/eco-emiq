@@ -7,16 +7,14 @@ import { useAuthStore } from '../../store/authStore';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Menu, LogOut, User } from 'lucide-react';
 import { NotificationBell } from '../../pages/vehicle-owner/Dashboard';
-import { useNavigate } from 'react-router-dom';
 
 export default function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
     const { user, logout } = useAuthStore();
     const { language, setLanguage, t } = useLanguage();
-    const navigate = useNavigate();
 
     const handleLogout = () => {
         logout();
-        navigate('/login', { replace: true });
+        window.location.href = '/login';
     };
 
     const getRoleBadge = (role: string) => {
@@ -68,12 +66,6 @@ export default function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
                         className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${language === 'ta' ? 'bg-white dark:bg-gray-600 shadow-sm text-primary-600 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
                     >
                         தமிழ்
-                    </button>
-                    <button
-                        onClick={() => setLanguage('hi')}
-                        className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${language === 'hi' ? 'bg-white dark:bg-gray-600 shadow-sm text-primary-600 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
-                    >
-                        हिंदी
                     </button>
                 </div>
 

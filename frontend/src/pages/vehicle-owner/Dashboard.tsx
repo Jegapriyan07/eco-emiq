@@ -19,8 +19,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import SensorConfidenceBadge from '../../components/shared/SensorConfidenceBadge';
 import ViolationCard, { ViolationData } from '../../components/emiq/ViolationCard';
 import ReductionRecommendationsPanel from '../../components/emiq/ReductionRecommendationsPanel';
-
-const ML_BASE = '/ml-api';
+import { ML_BASE } from '../../config/api';
 
 interface VehicleState {
     vehicle_id: string;
@@ -153,7 +152,7 @@ export default function VehicleOwnerDashboard() {
             }
         } catch (e) {
             console.error('Violation fetch failed:', e);
-            setViolationError('Cannot reach ML API at localhost:8000. Start the ML service with `npm run dev:ml`.');
+            setViolationError('Cannot reach ML API. Check VITE_ML_API_URL or start the ML service with `npm run dev:ml`.');
         } finally {
             setViolationLoading(false);
         }

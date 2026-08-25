@@ -4,8 +4,7 @@
 
 import { useState } from 'react';
 import { Flag, Loader2 } from 'lucide-react';
-
-const ML_BASE = '/ml-api';
+import { ML_BASE } from '../../config/api';
 
 interface Props {
     deviceId: string;

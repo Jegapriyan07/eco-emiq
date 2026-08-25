@@ -5,8 +5,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
 import { MapPin, RefreshCw } from 'lucide-react';
-
-const ML_BASE = '/ml-api';
+import { ML_BASE } from '../../config/api';
 
 interface WardState {
     ward_id: string;

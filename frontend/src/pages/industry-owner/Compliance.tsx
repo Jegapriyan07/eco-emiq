@@ -13,8 +13,7 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, LineChart, Line, Legend, ReferenceLine
 } from 'recharts';
-
-const ML_BASE = '/ml-api';
+import { ML_BASE } from '../../config/api';
 
 // CPCB (Central Pollution Control Board) limits for industrial emissions
 const CPCB_LIMITS = {

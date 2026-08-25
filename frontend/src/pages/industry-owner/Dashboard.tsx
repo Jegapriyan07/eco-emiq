@@ -10,8 +10,7 @@ import {
     PieChart, Pie, Cell, LineChart, Line, Legend
 } from 'recharts';
 import SensorConfidenceBadge from '../../components/shared/SensorConfidenceBadge';
-
-const ML_BASE = '/ml-api';
+import { ML_BASE } from '../../config/api';
 
 interface DeviceConfidence {
     confidence_score: number;

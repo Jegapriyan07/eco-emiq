@@ -4,8 +4,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Leaf, RefreshCw, Sparkles, TrendingDown } from 'lucide-react';
-
-const ML_BASE = '/ml-api';
+import { ML_BASE } from '../../config/api';
 
 interface Recommendation {
     priority: string;

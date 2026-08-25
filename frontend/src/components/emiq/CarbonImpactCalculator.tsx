@@ -4,8 +4,7 @@
 
 import { useState, useCallback } from 'react';
 import { Calculator, Info } from 'lucide-react';
-
-const ML_BASE = '/ml-api';
+import { ML_BASE } from '../../config/api';
 
 interface ImpactResult {
     participating_devices: number;

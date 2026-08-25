@@ -5,6 +5,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { TrendingUp, Wind, AlertTriangle, Activity, RefreshCw, Cpu, Brain, Loader2, CheckCircle2 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
+import { ML_BASE } from '../../config/api';
 
 // Types
 interface ForecastPoint {
@@ -39,8 +40,6 @@ interface ModelInfo {
     anomaly: { loaded: boolean; version: string | null; type: string };
     forecast: { loaded: boolean; version: string | null; type: string };
 }
-
-const ML_BASE = '/ml-api';
 
 const WARD_IDS = ['dharampeth', 'sadar', 'nehru_nagar', 'dhantoli', 'hanuman_nagar'];
 

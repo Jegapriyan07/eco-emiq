@@ -6,8 +6,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AlertTriangle, Bell, CheckCircle, Filter, RefreshCw, MessageSquare } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
-
-const ML_BASE = '/ml-api';
+import { ML_BASE } from '../../config/api';
 
 interface Alert {
     type: string;

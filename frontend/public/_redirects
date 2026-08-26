@@ -1,4 +1,0 @@
-# Render Static Sites: also add Dashboard → Redirects/Rewrites:
-#   Source /*  Destination /index.html  Action Rewrite
-# Netlify-compatible fallback (ignored by Render CDN):
-/*    /index.html   200

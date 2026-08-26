@@ -188,113 +188,52 @@ export default function CityAdminDashboard() {
         return () => clearInterval(interval);
     }, []);
 
-    // Ensure map stays visible and properly sized when data updates
-    useEffect(() => {
-        if (mapRef.current) {
-            setMapInitialized(true);
-            // Invalidate size when city data updates
-            setTimeout(() => {
-                if (mapRef.current) {
-                    mapRef.current.invalidateSize();
-                }
-            }, 50);
-        }
-    }, [city]);
-
     // Fetch hourly trend when selected ward changes
     useEffect(() => {
         if (selectedWard) fetchHourly(selectedWard.ward_id);
-    }, [selectedWard?.ward_id]);
+    }, [selectedWard?.ward_id, fetchHourly]);
 
-    // Initialize Leaflet map - simplified and reliable
+    // Initialize Leaflet map once city data (and map container) are available
     useEffect(() => {
-        // If map already exists, just ensure it's visible
+        if (!city || !mapContainerRef.current) return;
+
         if (mapRef.current) {
             setMapInitialized(true);
-            return;
+            const t = setTimeout(() => mapRef.current?.invalidateSize(), 80);
+            return () => clearTimeout(t);
         }
 
-        // Wait for container to be ready
-        const initMap = () => {
-            if (!mapContainerRef.current) {
-                return false;
-            }
+        let cancelled = false;
+        try {
+            const map = L.map(mapContainerRef.current, {
+                center: [13.0827, 80.2707],
+                zoom: 11,
+                zoomControl: true,
+            });
 
-            // Don't initialize if map already exists
-            if (mapRef.current) {
-                setMapInitialized(true);
-                return true;
-            }
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19,
+            }).addTo(map);
 
-            try {
-                // Initialize map centered on Chennai
-                const map = L.map(mapContainerRef.current, {
-                    center: [13.0827, 80.2707], // Chennai coordinates
-                    zoom: 11,
-                    zoomControl: true,
-                });
+            mapRef.current = map;
+            if (!cancelled) setMapInitialized(true);
 
-                // Add OpenStreetMap tile layer
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap contributors',
-                    maxZoom: 19,
-                }).addTo(map);
-
-                mapRef.current = map;
-
-                // Set initialized immediately
-                setMapInitialized(true);
-
-                // Invalidate size after map is created
-                setTimeout(() => {
-                    if (mapRef.current) {
-                        mapRef.current.invalidateSize();
-                    }
-                }, 100);
-
-                return true;
-            } catch (error) {
-                console.error('Error initializing map:', error);
-                return false;
-            }
-        };
-
-        // Try to initialize immediately
-        if (!initMap()) {
-            // If failed, retry after a short delay
-            const timer = setTimeout(() => {
-                if (!mapRef.current && mapContainerRef.current) {
-                    initMap();
-                } else if (mapRef.current) {
-                    setMapInitialized(true);
-                }
-            }, 200);
-
-            // Fallback: clear loading state after 3 seconds even if map didn't initialize
-            const fallbackTimer = setTimeout(() => {
-                if (mapRef.current) {
-                    setMapInitialized(true);
-                }
-            }, 3000);
-
-            return () => {
-                clearTimeout(timer);
-                clearTimeout(fallbackTimer);
-            };
+            setTimeout(() => {
+                if (!cancelled && mapRef.current) mapRef.current.invalidateSize();
+            }, 100);
+        } catch (error) {
+            console.error('Error initializing map:', error);
         }
 
-        // Handle window resize
-        const handleResize = () => {
-            if (mapRef.current) {
-                mapRef.current.invalidateSize();
-            }
-        };
+        const handleResize = () => mapRef.current?.invalidateSize();
         window.addEventListener('resize', handleResize);
 
         return () => {
+            cancelled = true;
             window.removeEventListener('resize', handleResize);
         };
-    }, []);
+    }, [city]);
 
     // Update map with ward data
     useEffect(() => {
@@ -609,13 +548,13 @@ export default function CityAdminDashboard() {
             {/* Map + Ward Selector */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Heatmap */}
-                <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">{t('city_aqi_heatmap')}</h2>
-                    <div className="relative w-full h-96 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-900">
-                        {!mapInitialized && mapContainerRef.current && (
-                            <div className="absolute inset-0 flex items-center justify-center z-10 bg-gray-100 dark:bg-gray-900 rounded-lg pointer-events-none">
+                <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">{t('city_aqi_heatmap')}</h2>
+                    <div className="relative w-full h-56 sm:h-64 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-900">
+                        {!mapInitialized && (
+                            <div className="absolute inset-0 flex items-center justify-center z-10 bg-gray-100/90 dark:bg-gray-900/90 rounded-lg pointer-events-none">
                                 <div className="flex flex-col items-center gap-2">
-                                    <RefreshCw className="w-6 h-6 text-primary-600 animate-spin" />
+                                    <RefreshCw className="w-5 h-5 text-primary-600 animate-spin" />
                                     <span className="text-sm text-gray-500">{t('loading')} {t('city_aqi_heatmap')}...</span>
                                 </div>
                             </div>
@@ -623,12 +562,7 @@ export default function CityAdminDashboard() {
                         <div
                             ref={mapContainerRef}
                             className="w-full h-full z-0"
-                            style={{
-                                minHeight: '384px',
-                                height: '384px',
-                                width: '100%',
-                                position: 'relative'
-                            }}
+                            style={{ height: '100%', width: '100%', minHeight: '224px' }}
                         />
                         {/* Legend */}
                         <div className="absolute bottom-4 right-4 bg-white/95 dark:bg-gray-800/95 rounded-lg p-3 shadow-lg text-xs z-[1000]">

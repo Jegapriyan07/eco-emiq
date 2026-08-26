@@ -24,9 +24,10 @@ interface ForecastResponse {
 interface WardInfo {
     ward_id: string;
     name: string;
-    current_aqi: number;
-    devices: number;
-    risk_level: string;
+    current_aqi?: number;
+    aqi?: number;
+    devices?: number;
+    risk_level?: string;
 }
 interface MaintenancePrediction {
     device_id: string;
@@ -75,9 +76,15 @@ export default function PredictionsPage() {
 
             const forecastData: ForecastResponse = await forecastRes.json();
             const wardsData: WardInfo[] = await wardsRes.json();
+            // /wards returns full ward snapshots with `aqi` (not current_aqi)
+            const normalized = (Array.isArray(wardsData) ? wardsData : []).map((w: WardInfo) => ({
+                ...w,
+                current_aqi: Number(w.current_aqi ?? w.aqi ?? 0),
+                name: w.name || w.ward_id,
+            }));
 
             setForecast(forecastData);
-            setWards(wardsData);
+            setWards(normalized);
             setLastUpdated(new Date());
 
             if (maintRes.ok) setMaintenance(await maintRes.json());
@@ -105,11 +112,17 @@ export default function PredictionsPage() {
         ]
         : [];
 
-    const riskByWard = wards.map(w => ({
-        ward: w.name,
-        risk: Math.round(Math.min(100, (w.current_aqi / 1.5))),
-        aqi: Math.round(w.current_aqi),
-    })).sort((a, b) => b.risk - a.risk);
+    const riskByWard = wards
+        .map(w => {
+            const aqi = Number(w.current_aqi ?? w.aqi ?? 0);
+            return {
+                ward: w.name || w.ward_id,
+                risk: Math.round(Math.min(100, Math.max(0, aqi / 1.5))),
+                aqi: Math.round(aqi),
+            };
+        })
+        .filter(w => Number.isFinite(w.risk))
+        .sort((a, b) => b.risk - a.risk);
 
     const severityColor = (s: string) =>
         s === 'critical' ? 'text-red-600 bg-red-100' :
@@ -200,7 +213,7 @@ export default function PredictionsPage() {
                                         : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
                                         }`}
                                 >
-                                    {ward?.name || wid} {ward && <span className="text-xs opacity-75">AQI {Math.round(ward.current_aqi)}</span>}
+                                    {ward?.name || wid} {ward && <span className="text-xs opacity-75">AQI {Math.round(ward.current_aqi ?? ward.aqi ?? 0)}</span>}
                                 </button>
                             );
                         })}
@@ -268,15 +281,19 @@ export default function PredictionsPage() {
                     {/* Risk by Ward */}
                     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
                         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Real-Time Risk Level by Ward (from ML API)</h2>
-                        <ResponsiveContainer width="100%" height={220}>
-                            <BarChart data={riskByWard} layout="vertical">
-                                <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" horizontal={false} />
-                                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12 }} />
-                                <YAxis type="category" dataKey="ward" tick={{ fontSize: 12 }} width={110} />
-                                <Tooltip contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: 'none', borderRadius: '8px', color: '#fff' }} />
-                                <Bar dataKey="risk" radius={[0, 6, 6, 0]} fill="#ff4d4f" name="Risk %" />
-                            </BarChart>
-                        </ResponsiveContainer>
+                        {riskByWard.length === 0 ? (
+                            <p className="text-sm text-gray-500 py-8 text-center">No ward risk data available</p>
+                        ) : (
+                            <ResponsiveContainer width="100%" height={Math.max(220, riskByWard.length * 36)}>
+                                <BarChart data={riskByWard} layout="vertical" margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
+                                    <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" horizontal={false} />
+                                    <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12 }} />
+                                    <YAxis type="category" dataKey="ward" tick={{ fontSize: 12 }} width={110} />
+                                    <Tooltip contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: 'none', borderRadius: '8px', color: '#fff' }} />
+                                    <Bar dataKey="risk" radius={[0, 6, 6, 0]} fill="#ff4d4f" name="Risk %" isAnimationActive={false} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        )}
                     </div>
 
                     {/* Maintenance Predictions */}

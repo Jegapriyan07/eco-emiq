@@ -2,7 +2,7 @@
  * Carbon Reduction Advisor panel (B2 / C1)
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Leaf, RefreshCw, Sparkles, TrendingDown } from 'lucide-react';
 import { ML_BASE } from '../../config/api';
 
@@ -25,6 +25,8 @@ interface Props {
     deviceId: string;
     deviceType?: string;
     emissionHistory?: Array<Record<string, number>>;
+    /** How often to re-fetch advisor data (ms). Default 20s. */
+    refreshIntervalMs?: number;
 }
 
 const priorityColors: Record<string, string> = {
@@ -34,22 +36,30 @@ const priorityColors: Record<string, string> = {
     low: 'border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20',
 };
 
-export default function ReductionRecommendationsPanel({ deviceId, deviceType = 'vehicle', emissionHistory }: Props) {
+export default function ReductionRecommendationsPanel({
+    deviceId,
+    deviceType = 'vehicle',
+    emissionHistory,
+    refreshIntervalMs = 20_000,
+}: Props) {
     const [data, setData] = useState<AdvisorResponse | null>(null);
     const [loading, setLoading] = useState(true);
+    const historyRef = useRef(emissionHistory);
+    historyRef.current = emissionHistory;
 
     const fetchAdvisor = useCallback(async () => {
         setLoading(true);
         try {
+            const history = historyRef.current;
             let res;
-            if (emissionHistory && emissionHistory.length > 0) {
+            if (history && history.length > 0) {
                 res = await fetch(`${ML_BASE}/agents/carbon-advisor`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         device_id: deviceId,
                         device_type: deviceType,
-                        emission_history: emissionHistory,
+                        emission_history: history,
                     }),
                 });
             } else {
@@ -61,11 +71,13 @@ export default function ReductionRecommendationsPanel({ deviceId, deviceType = '
         } finally {
             setLoading(false);
         }
-    }, [deviceId, deviceType, emissionHistory]);
+    }, [deviceId, deviceType]);
 
     useEffect(() => {
         fetchAdvisor();
-    }, [fetchAdvisor]);
+        const id = setInterval(fetchAdvisor, refreshIntervalMs);
+        return () => clearInterval(id);
+    }, [fetchAdvisor, refreshIntervalMs]);
 
     return (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">

@@ -244,13 +244,25 @@ export default function VehicleOwnerDashboard() {
     useEffect(() => {
         if (readings) {
             fetchSensorConfidence(readings);
-            fetchViolation(readings);
         }
-    }, [readings, fetchSensorConfidence, fetchViolation]);
+    }, [readings, fetchSensorConfidence]);
+
+    // AI Compliance & Carbon Reduction — refresh every 20s (not on every live reading tick)
+    const readingsRef = useRef(readings);
+    readingsRef.current = readings;
+    const weeklyTrendRef = useRef(weeklyTrend);
+    weeklyTrendRef.current = weeklyTrend;
 
     useEffect(() => {
-        if (weeklyTrend.length >= 2) fetchDriftForecast();
-    }, [weeklyTrend, fetchDriftForecast]);
+        const runAiCompliance = () => {
+            const r = readingsRef.current;
+            if (r) fetchViolation(r);
+            if (weeklyTrendRef.current.length >= 2) fetchDriftForecast();
+        };
+        runAiCompliance();
+        const interval = setInterval(runAiCompliance, 20_000);
+        return () => clearInterval(interval);
+    }, [fetchViolation, fetchDriftForecast]);
 
     // Priority: USB > MQTT > Mock/API
     useEffect(() => {
@@ -408,12 +420,12 @@ export default function VehicleOwnerDashboard() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {/* Violation + Explainer */}
-                    {violationLoading && (
+                    {violationLoading && !violation && (
                         <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 animate-pulse">
                             <p className="text-sm text-gray-500">Loading compliance verdict…</p>
                         </div>
                     )}
-                    {violationError && !violationLoading && (
+                    {violationError && !violationLoading && !violation && (
                         <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-900/20 p-5">
                             <p className="text-sm font-medium text-amber-800 dark:text-amber-200">{violationError}</p>
                             <button
@@ -424,7 +436,7 @@ export default function VehicleOwnerDashboard() {
                             </button>
                         </div>
                     )}
-                    {violation && !violationLoading && (
+                    {violation && (
                         <ViolationCard data={violation} />
                     )}
 
@@ -457,6 +469,7 @@ export default function VehicleOwnerDashboard() {
                     deviceId={readings.vehicle_id}
                     deviceType="vehicle"
                     emissionHistory={weeklyTrend.map(d => ({ co: d.co, nox: d.nox, pm25: d.pm25, emission_score: d.score }))}
+                    refreshIntervalMs={20_000}
                 />
             </div>
 

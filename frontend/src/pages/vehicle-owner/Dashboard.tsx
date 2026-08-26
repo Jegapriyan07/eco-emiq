@@ -12,7 +12,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useMqttConnection } from '../../hooks/useMqttConnection';
-import { useMockVehicleData } from '../../hooks/useMockVehicleData';
 import { useUsbConnection } from '../../hooks/useUsbConnection';
 import { Activity, TrendingUp, Wrench, AlertTriangle, Gauge, RefreshCw, Download, Bell, Usb, Wifi, X, CheckCircle2, Flame, BrainCircuit } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Line } from 'recharts';
@@ -112,7 +111,6 @@ function getScoreStrokeColor(emissionScore: number) {
 export default function VehicleOwnerDashboard() {
     const { isConnected: mqttConnected, isConnecting: mqttConnecting, data: mqttData, connect: mqttConnect, disconnect: mqttDisconnect } = useMqttConnection(false);
     const { status: usbStatus, isConnected: usbConnected, isConnecting: usbConnecting, isUnsupported: usbUnsupported, data: usbData, error: usbError, connect: usbConnect, disconnect: usbDisconnect } = useUsbConnection();
-    const mockData = useMockVehicleData();
     const [readings, setReadings] = useState<VehicleState | null>(null);
     const [weeklyTrend, setWeeklyTrend] = useState<WeeklyPoint[]>([]);
     const [maintenance, setMaintenance] = useState<MaintenancePrediction | null>(null);
@@ -123,6 +121,7 @@ export default function VehicleOwnerDashboard() {
     const [driftForecast, setDriftForecast] = useState<DriftForecast | null>(null);
     const [running, setRunning] = useState(true);
     const [lastUpdate, setLastUpdate] = useState(new Date());
+    const hardwareLive = usbConnected || mqttConnected;
 
     const fetchViolation = useCallback(async (vehicleData: VehicleState) => {
         setViolationLoading(true);
@@ -179,6 +178,8 @@ export default function VehicleOwnerDashboard() {
     }, [weeklyTrend, readings, sensorConfidence]);
 
     const fetchVehicle = useCallback(async () => {
+        // Never overwrite live hardware with simulation
+        if (usbConnected || mqttConnected) return;
         try {
             const res = await fetch(`${ML_BASE}/simulate/vehicle`);
             if (res.ok) {
@@ -189,7 +190,7 @@ export default function VehicleOwnerDashboard() {
         } catch (e) {
             console.error('Vehicle fetch failed:', e);
         }
-    }, []);
+    }, [usbConnected, mqttConnected]);
 
     const fetchWeekly = useCallback(async () => {
         try {
@@ -264,7 +265,7 @@ export default function VehicleOwnerDashboard() {
         return () => clearInterval(interval);
     }, [fetchViolation, fetchDriftForecast]);
 
-    // Priority: USB > MQTT > Mock/API
+    // Priority: USB > MQTT > live simulation API
     useEffect(() => {
         if (usbConnected && usbData) {
             setReadings({
@@ -275,7 +276,7 @@ export default function VehicleOwnerDashboard() {
                 co2: usbData.co2 ?? 0,
                 nox: usbData.nox ?? 0,
                 pm25: usbData.pm25 ?? 0,
-                carbon_footprint: 0,
+                carbon_footprint: Number((((usbData.co ?? 0) * 0.2) + ((usbData.pm25 ?? 0) * 0.05)).toFixed(2)),
                 drift_intelligence_score: 0,
                 engine_temp: usbData.temp ?? 0,
                 ambient_temp: 0,
@@ -288,32 +289,33 @@ export default function VehicleOwnerDashboard() {
                 vehicle_id: 'esp32-mqtt',
                 timestamp: new Date().toISOString(),
                 emission_score: mqttData.aqi ?? 0,
-                co: mqttData.nh3 ?? 0,
+                co: mqttData.nh3 ?? mqttData.co ?? 0,
                 co2: mqttData.co2 ?? 0,
-                nox: 0,
-                pm25: 0,
-                carbon_footprint: 0,
+                nox: mqttData.nox ?? 0,
+                pm25: mqttData.pm25 ?? 0,
+                carbon_footprint: Number((((mqttData.co2 ?? 400) - 400) * 0.01).toFixed(2)),
                 drift_intelligence_score: 0,
                 engine_temp: mqttData.temp ?? 0,
                 ambient_temp: 0,
                 traffic_load: 0,
                 label: 'Live (WiFi)',
             });
-        } else if (mockData) {
-            setReadings(mockData);
+            setLastUpdate(new Date());
         }
-    }, [usbConnected, usbData, mqttConnected, mqttData, mockData]);
+    }, [usbConnected, usbData, mqttConnected, mqttData]);
 
     useEffect(() => {
         fetchWeekly();
         fetchMaintenance();
-    }, []);
+    }, [fetchWeekly, fetchMaintenance]);
 
+    // Live simulation poll every 2s when hardware is not connected
     useEffect(() => {
-        if (!running) return;
-        const interval = setInterval(fetchVehicle, 5000);
+        if (!running || hardwareLive) return;
+        fetchVehicle();
+        const interval = setInterval(fetchVehicle, 2000);
         return () => clearInterval(interval);
-    }, [running]);
+    }, [running, hardwareLive, fetchVehicle]);
 
 
     const handleExport = () => {

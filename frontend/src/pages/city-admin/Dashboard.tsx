@@ -222,6 +222,9 @@ export default function CityAdminDashboard() {
             setTimeout(() => {
                 if (!cancelled && mapRef.current) mapRef.current.invalidateSize();
             }, 100);
+            setTimeout(() => {
+                if (!cancelled && mapRef.current) mapRef.current.invalidateSize();
+            }, 400);
         } catch (error) {
             console.error('Error initializing map:', error);
         }
@@ -547,10 +550,10 @@ export default function CityAdminDashboard() {
 
             {/* Map + Ward Selector */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Heatmap */}
-                <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
+                {/* Heatmap — self-start so tall ward panel doesn't leave empty space under the map */}
+                <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 self-start w-full">
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">{t('city_aqi_heatmap')}</h2>
-                    <div className="relative w-full h-56 sm:h-64 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-900">
+                    <div className="relative w-full aspect-[4/3] min-h-[320px] max-h-[520px] rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-900">
                         {!mapInitialized && (
                             <div className="absolute inset-0 flex items-center justify-center z-10 bg-gray-100/90 dark:bg-gray-900/90 rounded-lg pointer-events-none">
                                 <div className="flex flex-col items-center gap-2">
@@ -561,8 +564,8 @@ export default function CityAdminDashboard() {
                         )}
                         <div
                             ref={mapContainerRef}
-                            className="w-full h-full z-0"
-                            style={{ height: '100%', width: '100%', minHeight: '224px' }}
+                            className="absolute inset-0 z-0"
+                            style={{ width: '100%', height: '100%' }}
                         />
                         {/* Legend */}
                         <div className="absolute bottom-4 right-4 bg-white/95 dark:bg-gray-800/95 rounded-lg p-3 shadow-lg text-xs z-[1000]">

@@ -373,25 +373,26 @@ def compute_vehicle_state(vehicle_id: str = 'MH-31-AB-1234', now: datetime = Non
     # Base emission score: 30 (clean) to 80 (dirty)
     emission_score = 25 + traffic * 30 * engine_warm + cold_start * 15
 
-    # Clip to realistic range
-    minute_wobble = math.sin(now.minute * 0.15 + now.second * 0.03) * 3
+    # Second-level wobble so live polls (2s) visibly change gas readings
+    second_wobble = math.sin(now.second * 0.7 + now.microsecond / 1e6) * 2.5
+    minute_wobble = math.sin(now.minute * 0.15 + now.second * 0.03) * 3 + second_wobble
     emission_score = max(15, min(85, round(emission_score + minute_wobble)))
 
     # CO: driven by incomplete combustion during stop-and-go
     co = 5 + traffic * 15 * engine_warm
-    co = round(max(2, co + minute_wobble * 0.3), 1)
+    co = round(max(2, co + minute_wobble * 0.35 + second_wobble * 0.2), 1)
 
     # CO2: relatively stable, rises with engine load
     co2 = 380 + traffic * 80 + cold_start * 30
-    co2 = round(max(350, co2 + minute_wobble * 2), 1)
+    co2 = round(max(350, co2 + minute_wobble * 2 + second_wobble), 1)
 
     # NOx: rises with high engine temp and load
     nox = 0.3 + traffic * 0.8 * engine_warm
-    nox = round(max(0.1, nox + minute_wobble * 0.02), 2)
+    nox = round(max(0.1, nox + minute_wobble * 0.02 + second_wobble * 0.01), 2)
 
     # PM2.5: correlates with emission_score
     pm25 = emission_score * 0.55 + 5
-    pm25 = round(max(5, pm25 + minute_wobble * 0.5), 1)
+    pm25 = round(max(5, pm25 + minute_wobble * 0.5 + second_wobble * 0.3), 1)
 
     # Engine temp: rises with runtime, traffic makes it hotter
     engine_temp = 70 + traffic * 15 + max(0, (hour - 7)) * 0.5

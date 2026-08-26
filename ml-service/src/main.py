@@ -707,8 +707,11 @@ async def get_alerts():
 
 @app.get("/api/v1/ml/simulate/vehicle")
 async def get_vehicle_state(vehicle_id: str = 'MH-31-AB-1234'):
-    """Vehicle emission state from emission_readings."""
-    return repo.get_vehicle_state(vehicle_id)
+    """Live physics simulation (changes every second) — not a static DB snapshot."""
+    from simulation import compute_vehicle_state
+    state = compute_vehicle_state(vehicle_id)
+    state['data_source'] = 'simulation:live'
+    return state
 
 
 @app.get("/api/v1/ml/simulate/vehicle_weekly")

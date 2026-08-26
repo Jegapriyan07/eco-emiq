@@ -92,6 +92,7 @@ export default function CityAdminDashboard() {
     const [refreshing, setRefreshing] = useState(false);
     const [forecast, setForecast] = useState<any[]>([]);
     const [deviceConfidences, setDeviceConfidences] = useState<Record<string, SensorConfidence>>({});
+    const [connectionError, setConnectionError] = useState('');
     const mapRef = useRef<L.Map | null>(null);
     const mapContainerRef = useRef<HTMLDivElement | null>(null);
     const markersRef = useRef<L.Marker[]>([]);
@@ -145,6 +146,7 @@ export default function CityAdminDashboard() {
             if (cityRes.ok) {
                 const data: CitySnapshot = await cityRes.json();
                 setCity(data);
+                setConnectionError('');
 
                 // Fetch sensor confidence for each ward
                 data.wards.forEach(ward => {
@@ -157,6 +159,8 @@ export default function CityAdminDashboard() {
                     const updated = data.wards.find(w => w.ward_id === selectedWard.ward_id);
                     if (updated) setSelectedWard(updated);
                 }
+            } else {
+                setConnectionError(`ML service returned ${cityRes.status}. Retrying…`);
             }
 
             if (forecastRes.ok) {
@@ -170,6 +174,7 @@ export default function CityAdminDashboard() {
             setLastUpdated(new Date());
         } catch (e) {
             console.error('Failed to fetch city data:', e);
+            setConnectionError('Cannot reach ML service. Check that emiq-ml is running.');
         }
     }, [selectedWard, fetchSensorConfidence]);
 
@@ -474,9 +479,22 @@ export default function CityAdminDashboard() {
 
     if (!city) {
         return (
-            <div className="flex items-center justify-center py-20">
-                <RefreshCw className="w-8 h-8 text-primary-600 animate-spin" />
-                <span className="ml-3 text-gray-500">{t('connecting_simulation')}</span>
+            <div className="flex flex-col items-center justify-center py-20 gap-3">
+                <div className="flex items-center">
+                    <RefreshCw className={`w-8 h-8 text-primary-600 ${connectionError ? '' : 'animate-spin'}`} />
+                    <span className="ml-3 text-gray-500">
+                        {connectionError || t('connecting_simulation')}
+                    </span>
+                </div>
+                {connectionError && (
+                    <button
+                        type="button"
+                        onClick={() => { setConnectionError(''); fetchData(); }}
+                        className="px-4 py-2 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700"
+                    >
+                        Retry connection
+                    </button>
+                )}
             </div>
         );
     }

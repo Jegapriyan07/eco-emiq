@@ -1,5 +1,4 @@
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
-import { useAuthStore } from './store/authStore';
 
 // Layouts
 import DashboardLayout from './layouts/DashboardLayout';
@@ -51,8 +50,6 @@ import RoleRoute from './components/RoleRoute';
 import AccessibilityWidget from './components/AccessibilityWidget';
 
 function App() {
-    const { isAuthenticated, user } = useAuthStore();
-
     return (
         <>
             <AccessibilityWidget />
@@ -146,21 +143,7 @@ function App() {
                 {/* Default Redirect */}
                 <Route
                     path="/"
-                    element={
-                        isAuthenticated ? (
-                            <Navigate
-                                to={
-                                    user?.role === 'vehicle_owner' ? '/vehicle-owner' :
-                                        user?.role === 'generator_owner' ? '/generator-owner' :
-                                            user?.role === 'industry_owner' ? '/industry-owner' :
-                                                '/city-admin'
-                                }
-                                replace
-                            />
-                        ) : (
-                            <Navigate to="/home" replace />
-                        )
-                    }
+                    element={<Navigate to="/home" replace />}
                 />
 
                 {/* 404 */}

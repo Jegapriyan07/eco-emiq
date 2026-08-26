@@ -53,11 +53,11 @@ app = FastAPI(
     docs_url="/docs"
 )
 
-# CORS middleware
+# CORS — public ML API; avoid credentials+wildcard (browsers reject it)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

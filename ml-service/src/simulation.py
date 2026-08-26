@@ -161,7 +161,7 @@ def compute_ward_state(ward_id: str, now: datetime = None) -> dict:
     # Add live wobble so dashboard polls (2s) show changing gas readings
     second_wobble = math.sin(now.second * 0.7 + now.microsecond / 1e6) * 2.2
     minute_wobble = math.sin(now.minute * 0.1 + now.second * 0.02) * 3 + second_wobble
-    aqi = max(10, round(aqi + minute_wobble, 1))
+    aqi = max(10, round(raw_aqi + minute_wobble, 1))
 
     # --- Correlated pollutants ---
     # Base concentration calculations

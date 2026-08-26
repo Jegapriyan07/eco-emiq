@@ -2,7 +2,6 @@ import { Routes, Route, Navigate, Link } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 
 // Layouts
-import AuthLayout from './layouts/AuthLayout';
 import DashboardLayout from './layouts/DashboardLayout';
 import PublicLayout from './layouts/PublicLayout';
 
@@ -66,13 +65,9 @@ function App() {
                     <Route path="/trust" element={<TrustPage />} />
                 </Route>
 
-                {/* Login — standalone layout */}
+                {/* Auth — standalone layouts (match Login / Register UI) */}
                 <Route path="/login" element={<LoginPage />} />
-
-                {/* Register */}
-                <Route element={<AuthLayout />}>
-                    <Route path="/register" element={<RegisterPage />} />
-                </Route>
+                <Route path="/register" element={<RegisterPage />} />
 
                 {/* Protected Routes */}
                 <Route

@@ -128,7 +128,7 @@ export default function AnomaliesPage() {
 
     useEffect(() => {
         runAnomalyDetection();
-        const interval = setInterval(runAnomalyDetection, 15000);
+        const interval = setInterval(runAnomalyDetection, 3000);
         return () => clearInterval(interval);
     }, []);
 

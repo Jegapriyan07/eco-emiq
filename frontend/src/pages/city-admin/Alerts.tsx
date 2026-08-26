@@ -66,7 +66,7 @@ export default function AlertsPage() {
 
     useEffect(() => {
         fetchAlerts();
-        const interval = setInterval(fetchAlerts, 15000);
+        const interval = setInterval(fetchAlerts, 3000);
         return () => clearInterval(interval);
     }, []);
 

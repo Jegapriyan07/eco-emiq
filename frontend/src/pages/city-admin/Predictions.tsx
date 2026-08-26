@@ -98,6 +98,26 @@ export default function PredictionsPage() {
 
     useEffect(() => { fetchAll(); }, [fetchAll]);
 
+    // Keep ward risk chart live without full-page reload
+    useEffect(() => {
+        const refreshWards = async () => {
+            try {
+                const wardsRes = await fetch(`${ML_BASE}/wards`);
+                if (!wardsRes.ok) return;
+                const wardsData: WardInfo[] = await wardsRes.json();
+                const normalized = (Array.isArray(wardsData) ? wardsData : []).map((w: WardInfo) => ({
+                    ...w,
+                    current_aqi: Number(w.current_aqi ?? w.aqi ?? 0),
+                    name: w.name || w.ward_id,
+                }));
+                setWards(normalized);
+                setLastUpdated(new Date());
+            } catch { /* ignore poll errors */ }
+        };
+        const interval = setInterval(refreshWards, 3000);
+        return () => clearInterval(interval);
+    }, []);
+
     // Derived chart data
     const chartData = forecast
         ? [

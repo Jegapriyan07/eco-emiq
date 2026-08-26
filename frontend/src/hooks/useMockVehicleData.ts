@@ -25,7 +25,7 @@ export function useMockVehicleData() {
             if (res.ok) setData(await res.json());
         };
         fetchData();
-        const interval = setInterval(fetchData, 5000);
+        const interval = setInterval(fetchData, 2000);
         return () => clearInterval(interval);
     }, []);
     return data;

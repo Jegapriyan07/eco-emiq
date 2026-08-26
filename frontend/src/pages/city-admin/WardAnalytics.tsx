@@ -66,7 +66,7 @@ export default function WardAnalyticsPage() {
 
     useEffect(() => {
         fetchData();
-        const interval = setInterval(fetchData, 10000);
+        const interval = setInterval(fetchData, 2000);
         return () => clearInterval(interval);
     }, []);
 
@@ -110,6 +110,7 @@ export default function WardAnalyticsPage() {
                     { label: 'PM4.0', val: `${selected.pm4_0} μg/m³` },
                     { label: 'PM10.0', val: `${selected.pm10_0} μg/m³` },
                     { label: 'CO', val: `${selected.co} ppm` },
+                    { label: 'NOx', val: `${selected.nox} ppm` },
                     { label: 'NH3', val: `${selected.nh3} ppm` },
                     { label: 'NO2', val: `${selected.no2} ppm` },
                     { label: 'Carbon Footprint', val: `${selected.carbon_footprint} kg CO₂e` },

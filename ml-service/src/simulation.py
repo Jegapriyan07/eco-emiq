@@ -158,24 +158,22 @@ def compute_ward_state(ward_id: str, now: datetime = None) -> dict:
 
     raw_aqi = (traffic_contribution + industrial_contribution - green_mitigation) * dispersion * inversion
 
-    # Soft-map to keep around the ward's base_aqi characteristic
-    aqi = profile['base_aqi'] * 0.4 + raw_aqi * 0.6
-
-    # Add tiny deterministic wobble based on minute (not random — reproducible)
-    minute_wobble = math.sin(now.minute * 0.1 + now.second * 0.02) * 3
+    # Add live wobble so dashboard polls (2s) show changing gas readings
+    second_wobble = math.sin(now.second * 0.7 + now.microsecond / 1e6) * 2.2
+    minute_wobble = math.sin(now.minute * 0.1 + now.second * 0.02) * 3 + second_wobble
     aqi = max(10, round(aqi + minute_wobble, 1))
 
     # --- Correlated pollutants ---
     # Base concentration calculations
     pm25_conc = aqi * 0.42 * (1 + (rh - 50) * 0.003)
-    pm25_conc = max(5, pm25_conc + minute_wobble * 0.4)
+    pm25_conc = max(5, pm25_conc + minute_wobble * 0.45 + second_wobble * 0.25)
 
     co_conc = 5.0 + traffic * profile['traffic_factor'] * 15 * dispersion
-    co_conc = max(1.0, co_conc + minute_wobble * 0.2)
+    co_conc = max(1.0, co_conc + minute_wobble * 0.25 + second_wobble * 0.15)
 
     lagged_traffic = traffic_load(max(0, hour - 0.5))
     nox_conc = 0.2 + (lagged_traffic * profile['traffic_factor'] * 0.8 + profile['industrial_factor'] * 0.6) * dispersion
-    nox_conc = max(0.05, nox_conc + minute_wobble * 0.02)
+    nox_conc = max(0.05, nox_conc + minute_wobble * 0.02 + second_wobble * 0.01)
 
     pm1_0_conc = max(2.0, pm25_conc * 0.55 + minute_wobble * 0.1)
     pm4_0_conc = max(8.0, pm25_conc * 1.3 + minute_wobble * 0.2)

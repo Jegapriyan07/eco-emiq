@@ -35,7 +35,7 @@ from models.violation_classifier import ViolationClassifier
 from models.drift_forecast import DriftForecaster
 from agents.compliance_explainer import explain_compliance
 from agents.carbon_advisor import advise_reduction
-from simulation import WARD_PROFILES, traffic_load, wind_speed_model
+from simulation import WARD_PROFILES, traffic_load, wind_speed_model, compute_city_snapshot, compute_ward_state, compute_hourly_trend, compute_ward_daily_trends, compute_vehicle_state
 from db import init_database, is_seeded, EmissionRepository, database_label
 from db.seed import seed_demo_database
 
@@ -659,58 +659,60 @@ async def predict_sensor_confidence(request: SensorConfidenceRequest):
 
 
 # ============================================================================
-# DATA ENDPOINTS — seeded PostgreSQL (same schema as production)
-# Legacy /simulate/* paths kept for frontend compatibility
+# DATA ENDPOINTS — live physics simulation for dashboards
 # ============================================================================
 
 @app.get("/api/v1/ml/wards")
 async def get_wards():
-    """Return all wards from emission_readings aggregates."""
-    return repo.get_wards_list()
+    """Live ward list for dashboards."""
+    return compute_city_snapshot()["wards"]
 
 
 @app.get("/api/v1/ml/simulate/city")
-async def get_city_snapshot():
-    """Full city snapshot from seeded emission_readings."""
-    return repo.get_city_snapshot()
+async def get_city_snapshot_live():
+    """Full city snapshot — live simulation (gases change every poll)."""
+    snap = compute_city_snapshot()
+    snap["data_source"] = "simulation:live"
+    return snap
 
 
 @app.get("/api/v1/ml/simulate/ward/{ward_id}")
-async def get_ward_state(ward_id: str):
-    """Single ward state from latest DB readings."""
+async def get_ward_state_live(ward_id: str):
+    """Single ward state — live simulation."""
     if ward_id not in WARD_PROFILES:
         raise HTTPException(status_code=404, detail=f"Ward '{ward_id}' not found")
-    return repo.get_ward_state(ward_id)
+    state = compute_ward_state(ward_id)
+    state["data_source"] = "simulation:live"
+    return state
 
 
 @app.get("/api/v1/ml/simulate/ward_hourly/{ward_id}")
 async def get_ward_hourly(ward_id: str, hours: int = 24):
-    """Past N hours trend from emission_readings."""
+    """Past N hours trend — live simulation curve."""
     if ward_id not in WARD_PROFILES:
         raise HTTPException(status_code=404, detail=f"Ward '{ward_id}' not found")
     if hours > 72:
         hours = 72
-    return repo.get_hourly_trend(ward_id, hours)
+    return compute_hourly_trend(ward_id, hours)
 
 
 @app.get("/api/v1/ml/simulate/ward_trends")
-async def get_ward_daily_trends():
-    """All-wards AQI at key time points today."""
-    return repo.get_ward_daily_trends()
+async def get_ward_daily_trends_live():
+    """All-wards AQI at key time points today — live simulation."""
+    return compute_ward_daily_trends()
 
 
 @app.get("/api/v1/ml/simulate/alerts")
-async def get_alerts():
-    """Active alerts derived from latest emission_readings."""
-    return repo.get_alerts()
+async def get_alerts_live():
+    """Threshold alerts from live city snapshot."""
+    return compute_city_snapshot().get("alerts", [])
 
 
 @app.get("/api/v1/ml/simulate/vehicle")
-async def get_vehicle_state(vehicle_id: str = 'MH-31-AB-1234'):
-    """Live physics simulation (changes every second) — not a static DB snapshot."""
-    from simulation import compute_vehicle_state
+async def get_vehicle_state(vehicle_id: str = "MH-31-AB-1234"):
+    """Live physics simulation (changes every second)."""
     state = compute_vehicle_state(vehicle_id)
-    state['data_source'] = 'simulation:live'
+    state["data_source"] = "simulation:live"
     return state
 
 

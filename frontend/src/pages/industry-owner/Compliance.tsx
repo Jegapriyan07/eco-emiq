@@ -131,7 +131,7 @@ export default function CompliancePage() {
 
     useEffect(() => {
         fetchCompliance();
-        const interval = setInterval(fetchCompliance, 10000);
+        const interval = setInterval(fetchCompliance, 3000);
         return () => clearInterval(interval);
     }, []);
 

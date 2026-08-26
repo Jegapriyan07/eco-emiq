@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 import { useMqttConnection } from '../../hooks/useMqttConnection';
 import { useMockGeneratorData } from '../../hooks/useMockGeneratorData';
-import { Zap, Clock, Fuel, Power, ToggleLeft, ToggleRight, Download, AlertTriangle, Flame, BrainCircuit } from 'lucide-react';
+import { Zap, Clock, Power, ToggleLeft, ToggleRight, Download, AlertTriangle, Flame, BrainCircuit } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 const RUNTIME_DATA = [
@@ -36,6 +36,9 @@ export default function GeneratorOwnerDashboard() {
     const [autoShutdown, setAutoShutdown] = useState(false);
     const [generatorOn, setGeneratorOn] = useState(true);
     const [emission, setEmission] = useState(45.2);
+    const [co, setCo] = useState(12.4);
+    const [pm25, setPm25] = useState(28.5);
+    const [nox, setNox] = useState(0.55);
     const [temp, setTemp] = useState(78);
     const [runtime, setRuntime] = useState(125.5);
     const [lastUpdate, setLastUpdate] = useState(new Date());
@@ -44,17 +47,23 @@ export default function GeneratorOwnerDashboard() {
     const [carbonFootprint, setCarbonFootprint] = useState(0);
     const [driftScore, setDriftScore] = useState(0);
 
-    // Use MQTT data if connected, otherwise use mock
+    // Use MQTT data if connected, otherwise use live simulation
     useEffect(() => {
         if (isConnected && mqttData) {
-            setEmission(mqttData.nh3 ?? 0);
+            setEmission(mqttData.nh3 ?? mqttData.aqi ?? 0);
+            setCo(mqttData.co ?? mqttData.nh3 ?? 0);
+            setPm25(mqttData.pm25 ?? 0);
+            setNox(mqttData.nox ?? 0);
             setTemp(mqttData.temp ?? 0);
             setRuntime(mqttData.runtime ?? 0);
-            setCarbonFootprint(0); // Add logic if available via MQTT
+            setCarbonFootprint(0);
             setDriftScore(0);
             setLastUpdate(new Date());
         } else if (mockData) {
             setEmission(mockData.emission);
+            setCo(mockData.co);
+            setPm25(mockData.pm25);
+            setNox(mockData.nox);
             setTemp(mockData.temp);
             setRuntime(mockData.runtime);
             setCarbonFootprint(mockData.carbon_footprint);
@@ -123,10 +132,12 @@ export default function GeneratorOwnerDashboard() {
             )}
 
             {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4">
                 <StatCard icon={Clock} label="Total Runtime" value={`${runtime}h`} status={generatorOn ? 'running' : 'stopped'} color="text-blue-600" />
                 <StatCard icon={Zap} label="Emission Level" value={`${emission} ppm`} status={emission < 65 ? 'normal' : 'alert'} color={emColor} />
-                <StatCard icon={Fuel} label="Fuel Efficiency" value="85%" status="good" color="text-purple-600" />
+                <StatCard icon={Zap} label="CO" value={`${co} ppm`} status="live" color="text-orange-600" />
+                <StatCard icon={Zap} label="PM2.5" value={`${pm25} µg/m³`} status="live" color="text-rose-600" />
+                <StatCard icon={Zap} label="NOx" value={`${nox} ppm`} status="live" color="text-amber-600" />
                 <StatCard icon={Flame} label="Carbon Footprint" value={`${carbonFootprint} g CO₂e`} status="tracking" color="text-green-600" />
                 <StatCard icon={BrainCircuit} label="Drift Score" value={driftScore.toString()} status="residual" color="text-indigo-600" />
                 <StatCard icon={Power} label="Next Maintenance" value="72h" status="scheduled" color="text-orange-600" />

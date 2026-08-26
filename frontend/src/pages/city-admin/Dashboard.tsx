@@ -184,7 +184,7 @@ export default function CityAdminDashboard() {
     // Auto-refresh every 8 seconds
     useEffect(() => {
         fetchData();
-        const interval = setInterval(fetchData, 8000);
+        const interval = setInterval(fetchData, 2000);
         return () => clearInterval(interval);
     }, []);
 

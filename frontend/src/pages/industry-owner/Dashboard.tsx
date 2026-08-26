@@ -136,7 +136,7 @@ export default function IndustryOwnerDashboard() {
                 };
             }));
             setLastUpdate(new Date());
-        }, 5000);
+        }, 2000);
         return () => clearInterval(interval);
     }, []);
 

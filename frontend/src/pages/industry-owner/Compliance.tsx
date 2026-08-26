@@ -24,10 +24,10 @@ const CPCB_LIMITS = {
 
 // Industrial chambers mapped to wards (simulation-based)
 const CHAMBER_WARD_MAP = [
-    { chamber: 'Boiler Unit A', ward_id: 'dhantoli', device_id: 'IND-A01', capacity: '4 MW' },
-    { chamber: 'Exhaust Line B', ward_id: 'sadar', device_id: 'IND-B02', capacity: '2.5 MW' },
-    { chamber: 'Stack C (Main)', ward_id: 'dhantoli', device_id: 'IND-C03', capacity: '6 MW' },
-    { chamber: 'Furnace D', ward_id: 'dharampeth', device_id: 'IND-D04', capacity: '3 MW' },
+    { chamber: 'Boiler Unit A', ward_id: 'porur', device_id: 'IND-A01', capacity: '4 MW' },
+    { chamber: 'Exhaust Line B', ward_id: 't_nagar', device_id: 'IND-B02', capacity: '2.5 MW' },
+    { chamber: 'Stack C (Main)', ward_id: 'velachery', device_id: 'IND-C03', capacity: '6 MW' },
+    { chamber: 'Furnace D', ward_id: 'mylapore', device_id: 'IND-D04', capacity: '3 MW' },
 ];
 
 interface ComplianceRecord {

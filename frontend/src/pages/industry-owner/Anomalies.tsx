@@ -26,10 +26,10 @@ interface AnomalyResult {
 
 // Industrial chambers mapped to wards
 const CHAMBERS = [
-    { chamber: 'Boiler Unit A', ward_id: 'dhantoli', factor: 1.2 },
-    { chamber: 'Exhaust Line B', ward_id: 'sadar', factor: 0.9 },
-    { chamber: 'Stack C (Main)', ward_id: 'dhantoli', factor: 1.5 },
-    { chamber: 'Furnace D', ward_id: 'dharampeth', factor: 0.8 },
+    { chamber: 'Boiler Unit A', ward_id: 'porur', factor: 1.2 },
+    { chamber: 'Exhaust Line B', ward_id: 't_nagar', factor: 0.9 },
+    { chamber: 'Stack C (Main)', ward_id: 'velachery', factor: 1.5 },
+    { chamber: 'Furnace D', ward_id: 'mylapore', factor: 0.8 },
 ];
 
 export default function AnomaliesPage() {
@@ -108,7 +108,7 @@ export default function AnomaliesPage() {
             setLastScan(new Date());
 
             // Step 3: Fetch hourly trend for the main industrial ward
-            const hourlyRes = await fetch(`${ML_BASE}/simulate/ward_hourly/dhantoli?hours=24`);
+            const hourlyRes = await fetch(`${ML_BASE}/simulate/ward_hourly/porur?hours=24`);
             if (hourlyRes.ok) {
                 const raw = await hourlyRes.json();
                 setHourlyData(raw.map((point: any) => ({
@@ -251,7 +251,7 @@ export default function AnomaliesPage() {
             {/* 24-Hour Trend */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">24-Hour Industrial Emission Trend</h2>
-                <p className="text-sm text-gray-500 mb-4">Industrial PM2.5 (Dhantoli ward × 1.3x chamber factor) — anomalies appear above the red threshold line</p>
+                <p className="text-sm text-gray-500 mb-4">Industrial PM2.5 (Porur ward × 1.3x chamber factor) — anomalies appear above the red threshold line</p>
                 <ResponsiveContainer width="100%" height={280}>
                     <LineChart data={hourlyData}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />

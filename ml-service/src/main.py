@@ -35,7 +35,7 @@ from models.violation_classifier import ViolationClassifier
 from models.drift_forecast import DriftForecaster
 from agents.compliance_explainer import explain_compliance
 from agents.carbon_advisor import advise_reduction
-from simulation import WARD_PROFILES
+from simulation import WARD_PROFILES, traffic_load, wind_speed_model
 from db import init_database, is_seeded, EmissionRepository, database_label
 from db.seed import seed_demo_database
 
@@ -66,6 +66,7 @@ app.add_middleware(
 maintenance_model: Optional[MaintenancePredictor] = None
 anomaly_data: Optional[dict] = None        # {model, scaler, ...}
 forecast_data: Optional[dict] = None       # {model, scaler, feature_cols, ward_base_aqi, ...}
+forecast_load_error: Optional[str] = None
 sensor_confidence_model: Optional[SensorConfidenceModel] = None
 violation_classifier: Optional[ViolationClassifier] = None
 drift_forecaster = DriftForecaster()
@@ -221,7 +222,7 @@ class DisputeRequest(BaseModel):
 @app.on_event("startup")
 async def startup_event():
     """Load all trained .pkl models on startup"""
-    global maintenance_model, anomaly_data, forecast_data, sensor_confidence_model, violation_classifier
+    global maintenance_model, anomaly_data, forecast_data, forecast_load_error, sensor_confidence_model, violation_classifier
 
     project_root = os.path.dirname(current_dir)
     models_dir = os.path.join(project_root, "models")
@@ -264,12 +265,19 @@ async def startup_event():
         logger.warning(f"⚠ Anomaly model not loaded: {e}")
         anomaly_data = None
 
-    # 4. Forecast model (GradientBoosting)
+    # 4. Forecast model (GradientBoosting) — fall back to physics if pickle fails (sklearn version skew)
+    forecast_load_error = None
     try:
-        forecast_data = joblib.load(os.path.join(models_dir, "forecast_gbr.pkl"))
+        forecast_path = os.path.join(models_dir, "forecast_gbr.pkl")
+        if not os.path.exists(forecast_path):
+            raise FileNotFoundError(f"missing {forecast_path}")
+        forecast_data = joblib.load(forecast_path)
+        if not isinstance(forecast_data, dict) or 'model' not in forecast_data:
+            raise ValueError("forecast_gbr.pkl has unexpected format")
         logger.info("✅ Forecast model loaded (GradientBoosting)")
     except Exception as e:
-        logger.warning(f"⚠ Forecast model not loaded: {e}")
+        forecast_load_error = str(e)
+        logger.warning(f"⚠ Forecast model not loaded ({e}) — using physics fallback")
         forecast_data = None
 
     # 5. Violation classifier
@@ -336,7 +344,12 @@ async def health_check():
         "models": {
             "maintenance": {"loaded": maintenance_model is not None and maintenance_model.model is not None, "type": "RandomForestRegressor"},
             "anomaly":     {"loaded": anomaly_data is not None, "type": "IsolationForest"},
-            "forecast":    {"loaded": forecast_data is not None, "type": "GradientBoostingRegressor"},
+            "forecast":    {
+                "loaded": forecast_data is not None,
+                "type": "GradientBoostingRegressor",
+                "fallback": forecast_data is None,
+                "load_error": forecast_load_error,
+            },
             "sensor_confidence": {"loaded": sensor_confidence_model is not None, "type": "SensorConfidenceModel"},
             "violation_classifier": {"loaded": violation_classifier is not None, "type": "RandomForestClassifier"},
             "drift_forecaster": {"loaded": True, "type": "LinearTrendExtrapolation"},
@@ -469,15 +482,60 @@ async def predict_anomaly(request: AnomalyRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _physics_ward_forecast(ward_id: str, horizon: int) -> ForecastResponse:
+    """Deterministic traffic/wind AQI forecast when GBR pickle is unavailable."""
+    profile = WARD_PROFILES.get(ward_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail=f"Ward '{ward_id}' not found")
+
+    base_aqi = float(profile['base_aqi'])
+    now = datetime.now()
+    current_hour = now.hour
+    forecasts = []
+    checkpoints = [1, 6, 12, 18, 24, 48, 72]
+
+    for h in checkpoints:
+        if h > horizon:
+            break
+        future_hour = (current_hour + h) % 24
+        tl = traffic_load(float(future_hour))
+        wind = wind_speed_model(float(future_hour))
+        traffic_boost = 0.55 * tl * float(profile.get('traffic_factor', 1.0))
+        industrial = 0.25 * float(profile.get('industrial_factor', 0.2))
+        wind_relief = max(0.0, (wind - 4.0) * 0.035)
+        green = 0.12 * float(profile.get('green_cover', 0.4))
+        predicted = base_aqi * (0.75 + traffic_boost + industrial - wind_relief - green)
+        predicted = float(np.clip(predicted + np.random.normal(0, 2.5), 20, 320))
+        interval = 5 + (h * 0.15)
+        forecasts.append(ForecastHorizon(
+            hour=h,
+            aqi=round(predicted, 1),
+            lower_bound=round(max(10.0, predicted - interval), 1),
+            upper_bound=round(predicted + interval, 1),
+        ))
+
+    confidence = round(max(0.55, 0.88 - (horizon * 0.003)), 2)
+    return ForecastResponse(
+        ward_id=ward_id,
+        current_aqi=round(float(base_aqi + np.random.normal(0, 3)), 1),
+        forecasts=forecasts,
+        model="physics_fallback",
+        confidence=confidence,
+    )
+
+
 @app.get("/api/v1/ml/predict/ward_forecast", response_model=ForecastResponse)
 async def predict_ward_forecast(ward_id: str, horizon: int = 72):
-    """Forecast AQI for the next N hours using trained GradientBoosting model"""
+    """Forecast AQI for the next N hours using trained GradientBoosting model (or physics fallback)."""
     try:
         if horizon > 72:
             raise HTTPException(status_code=400, detail="Horizon cannot exceed 72 hours")
 
+        if ward_id not in WARD_PROFILES:
+            raise HTTPException(status_code=404, detail=f"Ward '{ward_id}' not found")
+
         if forecast_data is None:
-            raise HTTPException(status_code=503, detail="Forecast model not loaded. Run train_all_models.py first.")
+            return _physics_ward_forecast(ward_id, horizon)
 
         model = forecast_data['model']
         scaler = forecast_data['scaler']
@@ -535,6 +593,11 @@ async def predict_ward_forecast(ward_id: str, horizon: int = 72):
         raise
     except Exception as e:
         logger.error(f"Forecast prediction error: {e}")
+        # Last-resort physics path if sklearn predict fails at runtime
+        try:
+            return _physics_ward_forecast(ward_id, horizon)
+        except HTTPException:
+            raise
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -998,8 +1061,10 @@ async def get_models_info():
         },
         "forecast": {
             "loaded": forecast_data is not None,
-            "version": forecast_data.get('version') if forecast_data else None,
-            "type": "GradientBoostingRegressor",
+            "version": forecast_data.get('version') if forecast_data else "physics_fallback",
+            "type": "GradientBoostingRegressor" if forecast_data is not None else "physics_fallback",
+            "fallback": forecast_data is None,
+            "load_error": forecast_load_error,
         },
         "violation_classifier": {
             "loaded": violation_classifier is not None and violation_classifier.model is not None,

@@ -41,7 +41,7 @@ interface ModelInfo {
     forecast: { loaded: boolean; version: string | null; type: string };
 }
 
-const WARD_IDS = ['dharampeth', 'sadar', 'nehru_nagar', 'dhantoli', 'hanuman_nagar'];
+const WARD_IDS = ['t_nagar', 'anna_nagar', 'adyar', 'mylapore', 'velachery', 'porur'];
 
 const INSIGHTS = [
     { icon: '🌤️', title: 'Favourable wind expected', desc: 'Wind speed will increase to 18 km/h from the west by +24h, helping disperse pollutants.', color: 'bg-success-50 dark:bg-success-900/20 border-success-200' },
@@ -54,7 +54,7 @@ export default function PredictionsPage() {
     const [wards, setWards] = useState<WardInfo[]>([]);
     const [maintenance, setMaintenance] = useState<MaintenancePrediction[]>([]);
     const [modelInfo, setModelInfo] = useState<ModelInfo | null>(null);
-    const [selectedWard, setSelectedWard] = useState('dharampeth');
+    const [selectedWard, setSelectedWard] = useState('t_nagar');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);

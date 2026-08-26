@@ -396,11 +396,11 @@ def compute_vehicle_state(vehicle_id: str = 'MH-31-AB-1234', now: datetime = Non
     engine_temp = 70 + traffic * 15 + max(0, (hour - 7)) * 0.5
     engine_temp = round(min(95, max(65, engine_temp + minute_wobble * 0.5)), 1)
 
-    # --- Drift Intelligence Score ---
-    actual_emission = emission_score
-    emission_prediction = actual_emission + (math.sin(now.minute * 0.5) * 5)
-    residual = abs(emission_prediction - actual_emission)
-    drift_intelligence_score = round(residual * 0.7 + abs(math.cos(now.minute * 0.2) * 2), 2)
+    # --- Drift Intelligence Score (day-stable: +/- only when calendar day changes) ---
+    day_ordinal = now.toordinal()
+    day_wave = math.sin(day_ordinal * 0.37) * 1.15
+    weekday_bias = (day_ordinal % 7) * 0.09
+    drift_intelligence_score = round(max(0.5, 3.6 + day_wave + weekday_bias), 2)
 
     return {
         'vehicle_id': vehicle_id,

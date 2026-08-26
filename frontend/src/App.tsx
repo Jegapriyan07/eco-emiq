@@ -22,6 +22,7 @@ import EcoTipsPage from './pages/vehicle-owner/EcoTips';
 
 // Generator Owner Pages
 import GeneratorOwnerDashboard from './pages/generator-owner/Dashboard';
+import GeneratorControlPage from './pages/generator-owner/Control';
 import PerformancePage from './pages/generator-owner/Performance';
 import LogsPage from './pages/generator-owner/Logs';
 
@@ -99,7 +100,7 @@ function App() {
                                     <Route path="/" element={<GeneratorOwnerDashboard />} />
                                     <Route path="/performance" element={<PerformancePage />} />
                                     <Route path="/maintenance" element={<MaintenancePage />} />
-                                    <Route path="/control" element={<GeneratorOwnerDashboard />} />
+                                    <Route path="/control" element={<GeneratorControlPage />} />
                                     <Route path="/logs" element={<LogsPage />} />
                                 </Routes>
                             </RoleRoute>

@@ -121,7 +121,16 @@ export default function VehicleOwnerDashboard() {
     const [driftForecast, setDriftForecast] = useState<DriftForecast | null>(null);
     const [running, setRunning] = useState(true);
     const [lastUpdate, setLastUpdate] = useState(new Date());
+    const [displayDriftScore, setDisplayDriftScore] = useState<number | null>(null);
     const hardwareLive = usbConnected || mqttConnected;
+
+    const readingsRef = useRef(readings);
+    readingsRef.current = readings;
+    const weeklyTrendRef = useRef(weeklyTrend);
+    weeklyTrendRef.current = weeklyTrend;
+    const sensorConfidenceRef = useRef(sensorConfidence);
+    sensorConfidenceRef.current = sensorConfidence;
+    const sensorConfidenceKeyRef = useRef('');
 
     const fetchViolation = useCallback(async (vehicleData: VehicleState) => {
         setViolationLoading(true);
@@ -159,23 +168,25 @@ export default function VehicleOwnerDashboard() {
 
     const fetchDriftForecast = useCallback(async () => {
         try {
-            const scores = weeklyTrend.map(d => d.score);
+            const trend = weeklyTrendRef.current;
+            const scores = trend.map(d => d.score);
             if (scores.length < 2) return;
+            const r = readingsRef.current;
             const res = await fetch(`${ML_BASE}/predict/drift_forecast`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    device_id: readings?.vehicle_id || 'vehicle',
+                    device_id: r?.vehicle_id || 'vehicle',
                     emission_history: scores,
-                    confidence_scores: scores.map(() => sensorConfidence?.confidence_score ?? 0.85),
-                    current_emission_score: readings?.emission_score,
+                    confidence_scores: scores.map(() => sensorConfidenceRef.current?.confidence_score ?? 0.85),
+                    current_emission_score: r?.emission_score,
                 }),
             });
             if (res.ok) setDriftForecast(await res.json());
         } catch (e) {
             console.error(e);
         }
-    }, [weeklyTrend, readings, sensorConfidence]);
+    }, []);
 
     const fetchVehicle = useCallback(async () => {
         // Never overwrite live hardware with simulation
@@ -211,16 +222,19 @@ export default function VehicleOwnerDashboard() {
 
     const fetchSensorConfidence = useCallback(async (vehicleData: VehicleState) => {
         try {
-            // Generate readings from vehicle data
-            const readings = [];
+            // Deterministic sample series (no Math.random) so confidence stays stable within a day
+            const day = new Date().toISOString().slice(0, 10);
+            const seed = day.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+            const series = [];
             const now = new Date();
             for (let i = 0; i < 10; i++) {
                 const timestamp = new Date(now.getTime() - (9 - i) * 3600000);
-                readings.push({
+                const wobble = Math.sin((seed + i) * 0.4) * 1.2;
+                series.push({
                     timestamp: timestamp.toISOString(),
-                    value: vehicleData.pm25 + (Math.random() - 0.5) * 3,
-                    pm25: vehicleData.pm25 + (Math.random() - 0.5) * 3,
-                    calibration_age: 30 + Math.random() * 60
+                    value: vehicleData.pm25 + wobble,
+                    pm25: vehicleData.pm25 + wobble,
+                    calibration_age: 30 + (seed % 40),
                 });
             }
 
@@ -229,7 +243,7 @@ export default function VehicleOwnerDashboard() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     device_id: vehicleData.vehicle_id,
-                    readings: readings
+                    readings: series
                 })
             });
 
@@ -242,27 +256,32 @@ export default function VehicleOwnerDashboard() {
         }
     }, []);
 
+    // Sensor confidence once per vehicle id / day — not on every 2s gas tick
     useEffect(() => {
-        if (readings) {
-            fetchSensorConfidence(readings);
-        }
-    }, [readings, fetchSensorConfidence]);
+        const r = readingsRef.current;
+        if (!r?.vehicle_id) return;
+        const key = `${r.vehicle_id}:${new Date().toISOString().slice(0, 10)}`;
+        if (sensorConfidenceKeyRef.current === key) return;
+        sensorConfidenceKeyRef.current = key;
+        fetchSensorConfidence(r);
+    }, [readings?.vehicle_id, fetchSensorConfidence]);
 
-    // AI Compliance & Carbon Reduction — refresh every 20s (not on every live reading tick)
-    const readingsRef = useRef(readings);
-    readingsRef.current = readings;
-    const weeklyTrendRef = useRef(weeklyTrend);
-    weeklyTrendRef.current = weeklyTrend;
-
+    // AI Compliance + displayed Drift Score — refresh every 20s only
     useEffect(() => {
-        const runAiCompliance = () => {
+        const runStableAi = () => {
             const r = readingsRef.current;
-            if (r) fetchViolation(r);
+            if (r) {
+                fetchViolation(r);
+                setDisplayDriftScore(r.drift_intelligence_score);
+            }
             if (weeklyTrendRef.current.length >= 2) fetchDriftForecast();
         };
-        runAiCompliance();
-        const interval = setInterval(runAiCompliance, 20_000);
-        return () => clearInterval(interval);
+        const boot = setTimeout(runStableAi, 800);
+        const interval = setInterval(runStableAi, 20_000);
+        return () => {
+            clearTimeout(boot);
+            clearInterval(interval);
+        };
     }, [fetchViolation, fetchDriftForecast]);
 
     // Priority: USB > MQTT > live simulation API
@@ -403,7 +422,7 @@ export default function VehicleOwnerDashboard() {
                 <StatCard icon={Activity} label="CO Level" value={`${readings.co} ppm`} trend={`Traffic: ${Math.round(readings.traffic_load * 100)}%`} color="text-blue-600" />
                 <StatCard icon={TrendingUp} label="PM2.5" value={`${readings.pm25} μg/m³`} trend={`Ambient: ${readings.ambient_temp}°C`} color="text-purple-600" />
                 <StatCard icon={Flame} label="Carbon Footprint" value={`${readings.carbon_footprint} g`} trend="CO₂e Estimated" color="text-green-600" />
-                <StatCard icon={BrainCircuit} label="Drift Score" value={readings.drift_intelligence_score?.toString() || '0'} trend="Residual" color="text-indigo-600" />
+                <StatCard icon={BrainCircuit} label="Drift Score" value={(displayDriftScore ?? readings.drift_intelligence_score)?.toString() || '0'} trend="Stable · 20s" color="text-indigo-600" />
                 <StatCard icon={Wrench} label="Next Service" value={
                     driftForecast ? `${driftForecast.days_until_service_needed} days` :
                     maintenance ? `${maintenance.days_until_service}` : '—'

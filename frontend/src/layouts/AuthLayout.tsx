@@ -3,7 +3,7 @@
  * Layout for login and registration pages
  */
 
-import { Outlet, Navigate } from 'react-router-dom';
+import { Outlet, Navigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 
 export default function AuthLayout() {
@@ -41,9 +41,9 @@ export default function AuthLayout() {
 
                 {/* Footer */}
                 <div className="text-center text-sm text-gray-500 mt-8 space-x-3">
-                    <a href="/pricing" className="hover:text-primary-600">Pricing</a>
-                    <a href="/how-it-compares" className="hover:text-primary-600">Compare</a>
-                    <a href="/trust" className="hover:text-primary-600">Trust</a>
+                    <Link to="/pricing" className="hover:text-primary-600">Pricing</Link>
+                    <Link to="/how-it-compares" className="hover:text-primary-600">Compare</Link>
+                    <Link to="/trust" className="hover:text-primary-600">Trust</Link>
                 </div>
                 <p className="text-center text-sm text-gray-500 mt-4">
                     © 2026 EMIQ. Built for a sustainable future.

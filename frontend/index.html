@@ -6,6 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>EcoTronics - Emission Monitoring Platform</title>
     <meta name="description" content="Real-time emission monitoring and control platform for vehicles, generators, and industries" />
+    <!-- Convert legacy path URLs (/login) to hash routes (/#/login) when index.html is served -->
+    <script>
+      (function () {
+        var path = location.pathname;
+        if (path && path !== '/' && path.indexOf('/assets') !== 0 && !location.hash) {
+          location.replace('/#' + path + location.search);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

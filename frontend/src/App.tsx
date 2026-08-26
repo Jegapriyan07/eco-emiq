@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Link } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 
 // Layouts
@@ -174,7 +174,7 @@ function App() {
                         <div className="text-center">
                             <h1 className="text-6xl font-black text-gray-200 dark:text-gray-700">404</h1>
                             <p className="text-xl font-semibold text-gray-600 dark:text-gray-400 mt-2">Page not found</p>
-                            <a href="/" className="mt-4 inline-block text-primary-600 hover:underline">Go to Dashboard</a>
+                            <Link to="/" className="mt-4 inline-block text-primary-600 hover:underline">Go to Dashboard</Link>
                         </div>
                     </div>
                 } />

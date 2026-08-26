@@ -1,11 +1,16 @@
 # EcoTronics — Render Blueprint
 # https://render.com/docs/blueprint-spec
 #
-# After first deploy:
-# 1. Copy the ML Web Service URL
-# 2. Set Static Site env VITE_ML_API_URL=https://<ml-service>.onrender.com/api/v1/ml
-# 3. Trigger a Static Site rebuild (Vite bakes env at build time)
-# 4. Seed DB once: from ML service shell → python scripts/seed_demo_db.py
+# Frontend MUST be a Web Service (not Static Site).
+# Render Static Site rewrites are unreliable here: /home and /login return
+# empty 0-byte bodies, causing blank pages on refresh/back/logout.
+#
+# Manual Web Service settings (if not using Blueprint):
+#   Root Directory: frontend
+#   Runtime: Node
+#   Build: npm install && npm run build
+#   Start: npm start
+#   Env: VITE_ML_API_URL=https://emiq-ml.onrender.com/api/v1/ml
 
 services:
   - type: web
@@ -30,19 +35,17 @@ services:
 
   - type: web
     name: ecotronics-frontend
-    runtime: static
+    runtime: node
     rootDir: frontend
     plan: free
     buildCommand: npm install && npm run build
-    staticPublishPath: dist
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
+    startCommand: npm start
+    healthCheckPath: /
     envVars:
-      # Replace after ML service is live, then rebuild this site
+      - key: NODE_VERSION
+        value: "20"
       - key: VITE_ML_API_URL
-        value: https://ecotronics-ml.onrender.com/api/v1/ml
+        value: https://emiq-ml.onrender.com/api/v1/ml
 
 databases:
   - name: ecotronics-db

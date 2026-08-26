@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 import { useMqttConnection } from '../../hooks/useMqttConnection';
 import { useMockGeneratorData } from '../../hooks/useMockGeneratorData';
-import { Zap, Clock, Power, ToggleLeft, ToggleRight, Download, AlertTriangle, Flame, BrainCircuit } from 'lucide-react';
+import { Zap, Clock, Fuel, Power, ToggleLeft, ToggleRight, Download, AlertTriangle, Flame, BrainCircuit } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 const RUNTIME_DATA = [

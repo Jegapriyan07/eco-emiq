@@ -1,71 +1,9 @@
-/**
- * Competitor comparison page (E1)
- */
+import { Check } from 'lucide-react';
 
-import { Check, X, Minus } from 'lucide-react';
-
-type Cell = 'yes' | 'partial' | 'no' | string;
-
-const rows: { feature: string; emiq: Cell; puc: Cell; cpcb: Cell; cems: Cell }[] = [
-    { feature: 'Real-time capability', emiq: 'yes', puc: 'no', cpcb: 'partial', cems: 'yes' },
-    { feature: 'Granularity (per device)', emiq: 'yes', puc: 'partial', cpcb: 'no', cems: 'partial' },
-    { feature: 'Cost (affordable edge)', emiq: 'yes', puc: 'yes', cpcb: 'no', cems: 'no' },
-    { feature: 'Predictive / AI capability', emiq: 'yes', puc: 'no', cpcb: 'no', cems: 'partial' },
-    { feature: 'Carbon reduction coaching', emiq: 'yes', puc: 'no', cpcb: 'no', cems: 'no' },
-    { feature: 'Enforcement speed', emiq: 'yes', puc: 'partial', cpcb: 'partial', cems: 'yes' },
-    { feature: 'Sensor drift handling', emiq: 'yes', puc: 'no', cpcb: 'no', cems: 'partial' },
-    { feature: 'Spans vehicle + gen + industry', emiq: 'yes', puc: 'partial', cpcb: 'no', cems: 'partial' },
+const rows = [
+    ['Measures emissions', 'Interprets emission behaviour'], ['Shows current value', 'Compares against source baseline'], ['Threshold alert', 'Contextual anomaly detection'], ['Assumes sensor data is valid', 'Evaluates sensor confidence'], ['Reports a problem', 'Prioritizes the problem'], ['Separate maintenance information', 'Connects emission behaviour with maintenance prediction'], ['Dashboard / report', 'Decision + recommended action'],
 ];
 
-function CellIcon({ value }: { value: Cell }) {
-    if (value === 'yes') return <Check className="w-5 h-5 text-emerald-500 mx-auto" />;
-    if (value === 'no') return <X className="w-5 h-5 text-red-400 mx-auto" />;
-    if (value === 'partial') return <Minus className="w-5 h-5 text-amber-500 mx-auto" />;
-    return <span className="text-sm text-gray-600">{value}</span>;
-}
-
 export default function HowItComparesPage() {
-    return (
-        <div className="space-y-8">
-            <div className="text-center">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">How EMIQ Compares</h1>
-                <p className="text-gray-600 dark:text-gray-400 mt-2">
-                    EMIQ vs. PUC centres vs. CPCB stations vs. Industrial CEMS
-                </p>
-            </div>
-
-            <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                <table className="w-full text-sm">
-                    <thead>
-                        <tr className="bg-gray-100 dark:bg-gray-800">
-                            <th className="text-left p-4 font-semibold">Capability</th>
-                            <th className="p-4 font-semibold text-primary-600">EMIQ</th>
-                            <th className="p-4 font-semibold">PUC Centres</th>
-                            <th className="p-4 font-semibold">CPCB Stations</th>
-                            <th className="p-4 font-semibold">Industrial CEMS</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {rows.map((r) => (
-                            <tr key={r.feature} className="border-t border-gray-200 dark:border-gray-700">
-                                <td className="p-4 text-gray-700 dark:text-gray-300">{r.feature}</td>
-                                <td className="p-4 bg-primary-50/50 dark:bg-primary-900/10"><CellIcon value={r.emiq} /></td>
-                                <td className="p-4"><CellIcon value={r.puc} /></td>
-                                <td className="p-4"><CellIcon value={r.cpcb} /></td>
-                                <td className="p-4"><CellIcon value={r.cems} /></td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-
-            <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-xl p-6">
-                <h2 className="font-bold text-gray-900 dark:text-white">The EMIQ moat</h2>
-                <p className="text-gray-700 dark:text-gray-300 mt-2">
-                    <strong>Sensor Drift Intelligence + multi-agent AI layer + single platform spanning three emitter categories</strong> —
-                    no single existing solution does all three. EMIQ turns monitoring into measurable carbon reduction.
-                </p>
-            </div>
-        </div>
-    );
+    return <div className="mx-auto max-w-5xl space-y-9"><div className="text-center"><p className="text-sm font-bold uppercase tracking-[0.14em] text-primary-600">The EMIQ difference</p><h1 className="mt-3 text-3xl font-black tracking-tight text-slate-950 dark:text-white sm:text-5xl">Monitoring is a signal.<br />EMIQ turns it into a decision.</h1><p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-slate-600 dark:text-slate-300">Move from seeing emissions data to understanding the operating behaviour behind it and knowing the right next step.</p></div><section className="overflow-hidden rounded-3xl bg-slate-950 p-2 shadow-2xl sm:p-4"><div className="grid grid-cols-2 gap-4 border-b border-white/15 px-3 pb-4 pt-3 sm:px-5"><h2 className="text-sm font-bold text-slate-400 sm:text-lg">Existing monitoring</h2><h2 className="text-sm font-bold text-emerald-300 sm:text-lg">EMIQ</h2></div><div>{rows.map(([existing, emiq]) => <div key={existing} className="grid grid-cols-2 gap-4 border-b border-white/10 px-3 py-4 last:border-b-0 sm:px-5 sm:py-5"><p className="pr-2 text-sm leading-5 text-slate-300 sm:text-base">{existing}</p><p className="flex gap-2 text-sm font-semibold leading-5 text-white sm:text-base"><Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" />{emiq}</p></div>)}</div></section><section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 text-center dark:border-emerald-500/20 dark:bg-emerald-500/10"><p className="text-lg font-bold text-emerald-950 dark:text-emerald-100">EMIQ helps teams focus on the events that matter — earlier, with more confidence and a clear recommended action.</p></section></div>;
 }

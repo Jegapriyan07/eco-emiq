@@ -11,7 +11,7 @@ export interface User {
     email: string;
     firstName: string;
     lastName: string;
-    role: 'vehicle_owner' | 'generator_owner' | 'industry_owner' | 'city_admin';
+    role: 'generator_owner' | 'industry_owner' | 'city_admin';
     orgId?: string;
 }
 

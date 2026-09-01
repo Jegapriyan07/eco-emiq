@@ -25,7 +25,7 @@ const plans = [
         ],
     },
     {
-        segment: 'B2C — Vehicle & Generator',
+        segment: 'Generator operators',
         icon: Car,
         highlight: false,
         badge: 'Freemium',

@@ -21,7 +21,7 @@ interface Props {
     userRole?: string;
 }
 
-export default function ViolationCard({ data, showDispute = true, userRole = 'vehicle_owner' }: Props) {
+export default function ViolationCard({ data, showDispute = true, userRole = 'industry_owner' }: Props) {
     const isLowConfidence = data.confidence < 0.7;
     const verdictStyles = {
         Compliant: 'border-emerald-200 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-800',

@@ -7,7 +7,6 @@ import { useAuthStore } from '../../store/authStore';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Menu, LogOut, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { NotificationBell } from '../../pages/vehicle-owner/Dashboard';
 
 export default function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
     const { user, logout } = useAuthStore();
@@ -21,12 +20,11 @@ export default function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
 
     const getRoleBadge = (role: string) => {
         const badges: any = {
-            vehicle_owner: { label: t('vehicle_owner'), color: 'bg-blue-100 text-blue-700' },
             generator_owner: { label: 'Generator Owner', color: 'bg-green-100 text-green-700' },
             industry_owner: { label: t('industry_owner'), color: 'bg-purple-100 text-purple-700' },
             city_admin: { label: t('city_admin'), color: 'bg-orange-100 text-orange-700' },
         };
-        return badges[role] || badges.vehicle_owner;
+        return badges[role] || badges.generator_owner;
     };
 
     const badge = user ? getRoleBadge(user.role) : null;
@@ -70,9 +68,6 @@ export default function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
                         தமிழ்
                     </button>
                 </div>
-
-                {/* Notifications */}
-                <NotificationBell />
 
                 {/* User Menu */}
                 <div className="flex items-center gap-3 px-2 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-gray-200 dark:hover:border-gray-600">

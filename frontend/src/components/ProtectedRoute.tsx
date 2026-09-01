@@ -11,9 +11,11 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-    const { isAuthenticated } = useAuthStore();
+    const { isAuthenticated, user, logout } = useAuthStore();
+    const supportedRoles = ['generator_owner', 'industry_owner', 'city_admin'];
 
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user || !supportedRoles.includes(user.role)) {
+        if (isAuthenticated) logout();
         return <Navigate to="/login" replace />;
     }
 

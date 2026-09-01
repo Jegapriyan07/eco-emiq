@@ -13,7 +13,6 @@ import {
     AlertCircle,
     Sparkles,
     Building2,
-    Car,
     Zap,
     Factory,
     ArrowRight,
@@ -32,16 +31,6 @@ const DEMO_ACCOUNTS = [
         icon: Building2,
         accent: 'from-amber-500/20 to-orange-500/10 border-amber-500/30 active:border-amber-400/60 lg:hover:border-amber-400/60',
         iconColor: 'text-amber-400',
-    },
-    {
-        email: 'vehicle@demo.com',
-        label: 'Vehicle Owner',
-        shortLabel: 'Vehicle',
-        description: 'Fleet emissions & tips',
-        role: 'vehicle_owner',
-        icon: Car,
-        accent: 'from-sky-500/20 to-blue-500/10 border-sky-500/30 active:border-sky-400/60 lg:hover:border-sky-400/60',
-        iconColor: 'text-sky-400',
     },
     {
         email: 'generator@demo.com',
@@ -82,10 +71,8 @@ export default function LoginPage() {
 
     if (isAuthenticated) {
         const dashboardPath =
-            user?.role === 'vehicle_owner'
-                ? '/vehicle-owner'
-                : user?.role === 'generator_owner'
-                    ? '/generator-owner'
+            user?.role === 'generator_owner'
+                ? '/generator-owner'
                     : user?.role === 'industry_owner'
                         ? '/industry-owner'
                         : '/city-admin';
@@ -100,7 +87,6 @@ export default function LoginPage() {
 
         const names: Record<string, { first: string; last: string }> = {
             'city@demo.com': { first: 'John', last: 'Doe' },
-            'vehicle@demo.com': { first: 'Rahul', last: 'Sharma' },
             'generator@demo.com': { first: 'Priya', last: 'Patel' },
             'industry@demo.com': { first: 'Anand', last: 'Kumar' },
         };
@@ -112,9 +98,7 @@ export default function LoginPage() {
             email: emailVal,
             firstName: n.first,
             lastName: n.last,
-            role: emailVal.includes('vehicle')
-                ? ('vehicle_owner' as const)
-                : emailVal.includes('generator')
+            role: emailVal.includes('generator')
                     ? ('generator_owner' as const)
                     : emailVal.includes('industry')
                         ? ('industry_owner' as const)
@@ -124,8 +108,7 @@ export default function LoginPage() {
         setAuth(demoUser, 'demo-access-token', 'demo-refresh-token');
 
         const path =
-            demoUser.role === 'vehicle_owner' ? '/vehicle-owner' :
-                demoUser.role === 'generator_owner' ? '/generator-owner' :
+            demoUser.role === 'generator_owner' ? '/generator-owner' :
                     demoUser.role === 'industry_owner' ? '/industry-owner' :
                         '/city-admin';
 
@@ -164,7 +147,7 @@ export default function LoginPage() {
                             EMIQ
                         </h1>
                         <p className="mt-4 text-lg text-slate-300 max-w-md leading-relaxed">
-                            Continuous carbon intelligence for vehicles, generators, and industry — on one unified platform.
+                            Continuous carbon intelligence for generators and industry — on one unified platform.
                         </p>
                     </div>
 

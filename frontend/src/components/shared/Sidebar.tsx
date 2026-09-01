@@ -12,7 +12,6 @@ import {
     Settings,
     FileText,
     Wrench,
-    Lightbulb,
     Wifi,
     MapPin,
     AlertTriangle,
@@ -27,13 +26,6 @@ export default function Sidebar({ isOpen, onToggle: _onToggle }: { isOpen: boole
 
     // Helper to get translated label
     const getLabel = (key: string) => t(key);
-
-    const vehicleOwnerMenu = [
-        { icon: Home, label: getLabel('dashboard'), path: '/vehicle-owner' },
-        { icon: Activity, label: 'Timeline', path: '/vehicle-owner/timeline' },
-        { icon: Wrench, label: getLabel('maintenance'), path: '/vehicle-owner/maintenance' },
-        { icon: Lightbulb, label: 'Eco Tips', path: '/vehicle-owner/tips' },
-    ];
 
     const generatorOwnerMenu = [
         { icon: Home, label: getLabel('dashboard'), path: '/generator-owner' },
@@ -60,8 +52,7 @@ export default function Sidebar({ isOpen, onToggle: _onToggle }: { isOpen: boole
         { icon: Activity, label: getLabel('forecast'), path: '/city-admin/predictions' },
     ];
 
-    const menuItems = user?.role === 'vehicle_owner' ? vehicleOwnerMenu
-        : user?.role === 'generator_owner' ? generatorOwnerMenu
+    const menuItems = user?.role === 'generator_owner' ? generatorOwnerMenu
             : user?.role === 'industry_owner' ? industryOwnerMenu
                 : cityAdminMenu;
 

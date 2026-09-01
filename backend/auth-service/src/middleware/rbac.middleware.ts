@@ -1,21 +1,21 @@
 /**
  * EcoTronics Auth Service - RBAC Middleware
- * Role-Based Access Control for 4 user types
+ * Role-Based Access Control for generator, industry, and city users
  */
 
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../utils/errors';
 
-export type UserRole = 'vehicle_owner' | 'generator_owner' | 'industry_owner' | 'city_admin';
+export type UserRole = 'generator_owner' | 'industry_owner' | 'city_admin';
 
 /**
  * RBAC Permission Matrix
  */
 const PERMISSIONS = {
     // Own resources
-    'read:own:devices': ['vehicle_owner', 'generator_owner', 'industry_owner', 'city_admin'],
-    'write:own:devices': ['vehicle_owner', 'generator_owner', 'industry_owner', 'city_admin'],
-    'delete:own:devices': ['vehicle_owner', 'generator_owner', 'industry_owner', 'city_admin'],
+    'read:own:devices': ['generator_owner', 'industry_owner', 'city_admin'],
+    'write:own:devices': ['generator_owner', 'industry_owner', 'city_admin'],
+    'delete:own:devices': ['generator_owner', 'industry_owner', 'city_admin'],
 
     // Organization resources
     'read:org:devices': ['industry_owner', 'city_admin'],
@@ -188,8 +188,8 @@ export const requireSameOrg = async (
             return next();
         }
 
-        // Individual users (vehicle/generator owners) don't have org restrictions
-        if (userRole === 'vehicle_owner' || userRole === 'generator_owner') {
+        // Generator owners don't have organization restrictions
+        if (userRole === 'generator_owner') {
             return next();
         }
 

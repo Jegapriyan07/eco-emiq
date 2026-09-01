@@ -14,12 +14,6 @@ import TrustPage from './pages/public/TrustPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 
-// Vehicle Owner Pages
-import VehicleOwnerDashboard from './pages/vehicle-owner/Dashboard';
-import TimelinePage from './pages/vehicle-owner/Timeline';
-import VehicleMaintenancePage from './pages/vehicle-owner/Maintenance';
-import EcoTipsPage from './pages/vehicle-owner/EcoTips';
-
 // Generator Owner Pages
 import GeneratorOwnerDashboard from './pages/generator-owner/Dashboard';
 import GeneratorControlPage from './pages/generator-owner/Control';
@@ -75,22 +69,6 @@ function App() {
                         </ProtectedRoute>
                     }
                 >
-                    {/* Vehicle Owner Routes */}
-                    <Route
-                        path="/vehicle-owner/*"
-                        element={
-                            <RoleRoute allowedRoles={['vehicle_owner']}>
-                                <Routes>
-                                    <Route path="/" element={<VehicleOwnerDashboard />} />
-                                    <Route path="/timeline" element={<TimelinePage />} />
-                                    <Route path="/maintenance" element={<VehicleMaintenancePage />} />
-                                    <Route path="/tips" element={<EcoTipsPage />} />
-                                    <Route path="/devices" element={<DevicesPage />} />
-                                </Routes>
-                            </RoleRoute>
-                        }
-                    />
-
                     {/* Generator Owner Routes */}
                     <Route
                         path="/generator-owner/*"

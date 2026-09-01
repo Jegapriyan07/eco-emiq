@@ -17,7 +17,7 @@ export default function TrustPage() {
                 <h2 className="flex items-center gap-2 font-bold text-lg"><Lock className="w-5 h-5" /> Data we collect</h2>
                 <ul className="list-disc pl-6 text-gray-700 dark:text-gray-300 space-y-1 text-sm">
                     <li>Sensor readings: CO, NO₂, NH₃, PM2.5/PM10, temperature, device metadata</li>
-                    <li>Account info: name, email, role (vehicle / generator / industry / city admin)</li>
+                    <li>Account info: name, email, role (generator / industry / city admin)</li>
                     <li>Maintenance and compliance history tied to your devices</li>
                 </ul>
             </section>
@@ -26,7 +26,7 @@ export default function TrustPage() {
                 <h2 className="flex items-center gap-2 font-bold text-lg"><Shield className="w-5 h-5" /> Security</h2>
                 <p className="text-sm text-gray-700 dark:text-gray-300">
                     Authentication uses <strong>JWT tokens</strong> with <strong>role-based access control (RBAC)</strong>.
-                    Vehicle owners see only their devices; city admins see ward-level aggregates; industry owners see their facilities.
+                    Generator owners see only their devices; city admins see ward-level aggregates; industry owners see their facilities.
                     Data in transit is encrypted (HTTPS). Production deployments use PostgreSQL/TimescaleDB with access controls.
                 </p>
             </section>

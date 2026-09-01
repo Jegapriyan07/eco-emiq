@@ -13,7 +13,6 @@ import {
     AlertCircle,
     Sparkles,
     Building2,
-    Car,
     Zap,
     Factory,
     User,
@@ -24,16 +23,6 @@ import {
 } from 'lucide-react';
 
 const ACCOUNT_TYPES = [
-    {
-        value: 'vehicle_owner',
-        label: 'Vehicle Owner',
-        shortLabel: 'Vehicle',
-        description: 'Fleet emissions & tips',
-        icon: Car,
-        accent: 'from-sky-500/20 to-blue-500/10 border-sky-500/30',
-        selected: 'border-sky-500 ring-2 ring-sky-500/25 bg-sky-50 dark:bg-sky-950/40',
-        iconColor: 'text-sky-500',
-    },
     {
         value: 'generator_owner',
         label: 'Generator Owner',
@@ -84,7 +73,7 @@ export default function RegisterPage() {
         email: '',
         password: '',
         confirmPassword: '',
-        role: 'vehicle_owner',
+        role: 'generator_owner',
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -94,10 +83,8 @@ export default function RegisterPage() {
 
     if (isAuthenticated) {
         const dashboardPath =
-            user?.role === 'vehicle_owner'
-                ? '/vehicle-owner'
-                : user?.role === 'generator_owner'
-                    ? '/generator-owner'
+            user?.role === 'generator_owner'
+                ? '/generator-owner'
                     : user?.role === 'industry_owner'
                         ? '/industry-owner'
                         : '/city-admin';
@@ -158,7 +145,7 @@ export default function RegisterPage() {
                             EMIQ
                         </h1>
                         <p className="mt-4 text-lg text-slate-300 max-w-md leading-relaxed">
-                            Create your workspace and start tracking emissions across vehicles, generators, and industry.
+                            Create your workspace and start tracking emissions across generators and industry.
                         </p>
                     </div>
 

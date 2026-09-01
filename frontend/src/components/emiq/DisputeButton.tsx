@@ -13,7 +13,7 @@ interface Props {
     userRole?: string;
 }
 
-export default function DisputeButton({ deviceId, violationId, classifierConfidence, userRole = 'vehicle_owner' }: Props) {
+export default function DisputeButton({ deviceId, violationId, classifierConfidence, userRole = 'industry_owner' }: Props) {
     const [open, setOpen] = useState(false);
     const [reason, setReason] = useState('');
     const [status, setStatus] = useState<string | null>(null);

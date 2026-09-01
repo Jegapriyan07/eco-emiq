@@ -22,7 +22,7 @@ const registerSchema = z.object({
     password: z.string().min(8, 'Password must be at least 8 characters'),
     firstName: z.string().min(1, 'First name is required'),
     lastName: z.string().min(1, 'Last name is required'),
-    role: z.enum(['vehicle_owner', 'generator_owner', 'industry_owner', 'city_admin']),
+    role: z.enum(['generator_owner', 'industry_owner', 'city_admin']),
     phone: z.string().optional(),
     orgId: z.string().uuid().optional(),
 });
@@ -77,7 +77,7 @@ export class AuthController {
      *                 type: string
      *               role:
      *                 type: string
-     *                 enum: [vehicle_owner, generator_owner, industry_owner, city_admin]
+     *                 enum: [generator_owner, industry_owner, city_admin]
      *               phone:
      *                 type: string
      *               orgId:
@@ -210,6 +210,10 @@ export class AuthController {
             // Check if user is active
             if (!user.isActive) {
                 throw new AppError('Account is deactivated', 403, 'ACCOUNT_DEACTIVATED');
+            }
+
+            if (user.role === 'vehicle_owner') {
+                throw new AppError('Vehicle accounts are no longer supported', 403, 'ROLE_RETIRED');
             }
 
             // Verify password

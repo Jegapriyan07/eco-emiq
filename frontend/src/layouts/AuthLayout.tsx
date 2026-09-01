@@ -12,10 +12,8 @@ export default function AuthLayout() {
     // Redirect to dashboard if already authenticated
     if (isAuthenticated) {
         const dashboardPath =
-            user?.role === 'vehicle_owner'
-                ? '/vehicle-owner'
-                : user?.role === 'generator_owner'
-                    ? '/generator-owner'
+            user?.role === 'generator_owner'
+                ? '/generator-owner'
                     : user?.role === 'industry_owner'
                         ? '/industry-owner'
                         : '/city-admin';

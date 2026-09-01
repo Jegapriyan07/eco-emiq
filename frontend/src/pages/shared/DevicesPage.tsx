@@ -1,6 +1,6 @@
 /**
  * Shared Devices Page
- * Used by both vehicle-owner and city-admin
+ * Used by generator owners and city admins
  */
 import { Wifi, Battery, Activity, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
